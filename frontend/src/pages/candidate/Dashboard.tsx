@@ -8,7 +8,7 @@ import {
   Terminal, Monitor, Maximize2, Radio, Activity
 } from 'lucide-react'
 
-const API_BASE = ((import.meta as any).env?.VITE_API_URL) || `${API_BASE}`
+const API_BASE = ((import.meta as any).env?.VITE_API_URL) || 'https://swiply.io:8000'
 const WTTJ_SERVICE = `${API_BASE}/wttj`
 
 interface SetupStatus {

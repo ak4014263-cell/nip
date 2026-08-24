@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-const API_BASE = ((import.meta as any).env?.VITE_API_URL) || `${API_BASE}`
+const API_BASE = ((import.meta as any).env?.VITE_API_URL) || 'https://swiply.io:8000'
 
 export default function EmailInbox() {
   const { user } = useAuthStore()

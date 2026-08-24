@@ -4,9 +4,9 @@ import { useAuthStore } from '../../store/authStore'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
+const API_BASE = ((import.meta as any).env?.VITE_API_URL) || 'https://swiply.io:8000'
 const CREDENTIAL_SERVICE = `${API_BASE}/credentials`
 const WTTJ_SERVICE = `${API_BASE}/wttj`
-const API_BASE = ((import.meta as any).env?.VITE_API_URL) || `${API_BASE}`
 
 export default function Credentials() {
   const { user } = useAuthStore()

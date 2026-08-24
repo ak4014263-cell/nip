@@ -25,7 +25,7 @@ interface SyncStatus {
   error?: string;
 }
 
-const SYNC_SERVICE_URL = `${API_BASE}/wttj`;
+const SYNC_SERVICE_URL = (((import.meta as any).env?.VITE_API_URL) || 'https://swiply.io:8000') + '/wttj';
 
 /**
  * Swipply registration ke saath WTTJ form fill karo

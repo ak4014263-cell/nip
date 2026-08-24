@@ -5,7 +5,7 @@ import { useAuthStore } from '../../store/authStore'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 
-const API_BASE = ((import.meta as any).env?.VITE_API_URL) || `${API_BASE}`
+const API_BASE = ((import.meta as any).env?.VITE_API_URL) || 'https://swiply.io:8000'
 const WTTJ_SERVICE_URL = `${API_BASE}/wttj`
 
 export default function JobSwipe() {
