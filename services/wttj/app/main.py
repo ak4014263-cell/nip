@@ -15,6 +15,11 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("wttj_microservice")
 
+# Print directly to ensure it's visible
+import sys
+print("DEBUG: Starting WTTJ service main module", file=sys.stderr)
+print(f"DEBUG: Python path: {sys.path[:3]}", file=sys.stderr)
+
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -27,20 +32,28 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 # TLS Account Service Integration
+print("DEBUG: Attempting TLS endpoints import...", file=sys.stderr)
 try:
     logger.info("Attempting to load TLS endpoints from relative import...")
+    print("DEBUG: Trying relative import .tls_endpoints", file=sys.stderr)
     from .tls_endpoints import router as tls_router
     logger.info("✅ TLS endpoints loaded from relative import")
+    print("DEBUG: SUCCESS - TLS endpoints loaded", file=sys.stderr)
 except Exception as e:
+    print(f"DEBUG: Relative import failed: {type(e).__name__}: {e}", file=sys.stderr)
     logger.error(f"❌ Failed to load TLS endpoints (relative): {type(e).__name__}: {e}", exc_info=True)
     try:
         logger.info("Attempting to load TLS endpoints from direct import...")
+        print("DEBUG: Trying direct import tls_endpoints", file=sys.stderr)
         from tls_endpoints import router as tls_router
         logger.info("✅ TLS endpoints loaded from direct import")
+        print("DEBUG: SUCCESS - TLS endpoints loaded (direct)", file=sys.stderr)
     except Exception as e2:
+        print(f"DEBUG: Direct import failed: {type(e2).__name__}: {e2}", file=sys.stderr)
         logger.error(f"❌ Failed to load TLS endpoints (direct): {type(e2).__name__}: {e2}", exc_info=True)
         tls_router = None
         logger.warning("⚠️  TLS endpoints not available")
+        print("DEBUG: TLS endpoints not available - will proceed without them", file=sys.stderr)
 
 # Fix for Windows - Playwright subprocess issue
 if sys.platform == 'win32':
