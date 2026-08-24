@@ -9,7 +9,11 @@ import logging
 import time
 from typing import Optional, Dict, Any
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
-from playwright_stealth import stealth_async
+try:
+    from playwright_stealth import stealth_async
+except ImportError:
+    # playwright-stealth v2 uses just 'stealth'
+    from playwright_stealth import stealth as stealth_async
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("wttj_bot_bypass")
