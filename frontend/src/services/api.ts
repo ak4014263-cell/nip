@@ -5,15 +5,15 @@ const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || 'http://localho
 
 // Service endpoints
 export const SERVICES = {
-  AUTH: `http://localhost:8001`,
-  AI: `http://localhost:8010`,
-  USER: `${API_BASE_URL}/user`,
-  JOB: `http://localhost:8003`,
-  PROFILE: `http://localhost:8004`,
+  AUTH: `${API_BASE_URL}`,
+  AI: `${API_BASE_URL}/ai`,
+  USER: `${API_BASE_URL}/users`,
+  JOB: `${API_BASE_URL}/jobs`,
+  PROFILE: `${API_BASE_URL}/profiles`,
   MATCH: `${API_BASE_URL}/match`,
-  APPLICATION: `http://localhost:8003`,
-  CREDENTIAL: `http://localhost:8009`,
-  EMAIL: `http://localhost:8007`,
+  APPLICATION: `${API_BASE_URL}/applications`,
+  CREDENTIAL: `${API_BASE_URL}/credentials`,
+  EMAIL: `${API_BASE_URL}/emails`,
   CHAT: `${API_BASE_URL}/chat`,
 }
 

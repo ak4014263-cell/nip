@@ -48,7 +48,12 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "https://swiply.io",
+        "https://www.swiply.io"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -206,8 +211,20 @@ async def register(request: Request):
     return await proxy_request("auth", "register", request)
 
 @app.api_route("/login", methods=["POST"])
-async def login(request: Request):
+async def route_login(request: Request):
     return await proxy_request("auth", "login", request)
+
+@app.api_route("/logout", methods=["POST"])
+async def route_logout(request: Request):
+    return await proxy_request("auth", "logout", request)
+
+@app.api_route("/me", methods=["GET"])
+async def route_me(request: Request):
+    return await proxy_request("auth", "me", request)
+
+@app.api_route("/automation-status/{user_id}", methods=["GET"])
+async def route_automation_status(user_id: str, request: Request):
+    return await proxy_request("auth", f"automation-status/{user_id}", request)
 
 @app.api_route("/auth/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def auth_routes(path: str, request: Request):
