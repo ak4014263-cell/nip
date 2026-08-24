@@ -16,6 +16,17 @@ import asyncio
 import re
 from datetime import datetime
 
+# TLS Account Service Integration
+try:
+    from .tls_endpoints import router as tls_router
+except ImportError:
+    try:
+        from tls_endpoints import router as tls_router
+    except ImportError:
+        tls_router = None
+        logger = logging.getLogger("wttj_microservice")
+        logger.warning("⚠️  TLS endpoints not available")
+
 # Fix for Windows - Playwright subprocess issue
 if sys.platform == 'win32':
     try:
@@ -89,6 +100,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include TLS account creation router
+if tls_router:
+    app.include_router(tls_router)
+    logger.info("✅ TLS account creation endpoints registered")
 
 # ---------------------------------------------------------------------------
 # Pydantic Request Models
