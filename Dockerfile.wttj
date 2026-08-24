@@ -16,6 +16,11 @@ COPY ./shared ./shared
 # Copy the WTTJ service
 COPY ./services/wttj ./services/wttj
 
+# Copy TLS-related modules from root
+COPY tls_wttj_creator.py .
+COPY rate_limiter.py .
+COPY csrf_extractor.py .
+
 # Ensure screenshots and profile directories exist
 RUN mkdir -p screenshots firefox_profile
 
