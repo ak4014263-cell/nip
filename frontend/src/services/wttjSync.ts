@@ -25,7 +25,7 @@ interface SyncStatus {
   error?: string;
 }
 
-const SYNC_SERVICE_URL = '`${API_BASE}/wttj`';
+const SYNC_SERVICE_URL = `${API_BASE}/wttj`;
 
 /**
  * Swipply registration ke saath WTTJ form fill karo

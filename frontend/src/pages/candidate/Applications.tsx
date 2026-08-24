@@ -3,7 +3,7 @@ import { Building2, Calendar, ExternalLink, Loader2, CheckCircle2, Clock, XCircl
 import axios from 'axios'
 import { useAuthStore } from '../../store/authStore'
 
-const API_BASE = '`${API_BASE}`'
+const API_BASE = `${API_BASE}`
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   applied:    { label: 'Applied',     color: 'bg-indigo-50 text-indigo-700 border-indigo-200',  icon: CheckCircle2 },
