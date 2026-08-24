@@ -5,7 +5,7 @@ fastapi
 httpx
 ollama
 openai
-playwright
+playwright==1.62.0
 playwright-stealth
 psycopg2-binary
 pydantic
