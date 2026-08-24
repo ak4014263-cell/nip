@@ -32,6 +32,24 @@ class RemoteControlledBrowser:
         
         self.driver = webdriver.Chrome(options=options)
         
+    def human_type(self, element, text):
+        import time
+        from selenium.webdriver.common.action_chains import ActionChains
+        try:
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+            time.sleep(0.5)
+            element.click()
+            time.sleep(0.2)
+            # Clear using JS because element.clear() sometimes fails on React
+            self.driver.execute_script("arguments[0].value = '';", element)
+            element.send_keys(u'\ue003' * 10) # backspace
+            
+            for char in str(text):
+                ActionChains(self.driver).send_keys(char).perform()
+                time.sleep(0.05)
+        except Exception as e:
+            element.send_keys(text)
+
     async def fill_signup_form(self, email: str, password: str, first_name: str, last_name: str):
         """Fill the WTTJ signup form and wait for user to trigger submit"""
         try:
@@ -52,16 +70,14 @@ class RemoteControlledBrowser:
             # Fill email
             logger.info("[2/5] Filling email...")
             email_input = self.driver.find_element(By.CSS_SELECTOR, 'input[type="email"]')
-            email_input.clear()
-            email_input.send_keys(email)
+            self.human_type(email_input, email)
             await asyncio.sleep(1)
             
             # Fill password
             logger.info("[3/5] Filling password...")
             password_inputs = self.driver.find_elements(By.CSS_SELECTOR, 'input[type="password"]')
             for pwd_field in password_inputs:
-                pwd_field.clear()
-                pwd_field.send_keys(password)
+                self.human_type(pwd_field, password)
                 await asyncio.sleep(0.5)
             
             # Fill names
@@ -79,8 +95,7 @@ class RemoteControlledBrowser:
                 for selector in first_selectors:
                     try:
                         name_input = self.driver.find_element(By.CSS_SELECTOR, selector)
-                        name_input.clear()
-                        name_input.send_keys(clean_first)
+                        self.human_type(name_input, clean_first)
                         logger.info(f"  ✓ First name: {clean_first}")
                         break
                     except:
@@ -95,8 +110,7 @@ class RemoteControlledBrowser:
                 for selector in last_selectors:
                     try:
                         last_input = self.driver.find_element(By.CSS_SELECTOR, selector)
-                        last_input.clear()
-                        last_input.send_keys(clean_last)
+                        self.human_type(last_input, clean_last)
                         logger.info(f"  ✓ Last name: {clean_last}")
                         break
                     except:
