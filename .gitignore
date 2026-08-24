@@ -72,7 +72,7 @@ firefox_profile/
 
 # Gmail tokens
 gmail_tokens/
-*.json
+gmail_tokens/*.json
 
 # Temporary files
 scratch/
