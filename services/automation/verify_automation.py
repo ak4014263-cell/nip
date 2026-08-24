@@ -31,7 +31,7 @@ async def run_verification(adapter, site_name, email, job_url):
     try:
         async with async_playwright() as p:
             # We use headed mode so you can see it if you want, but default headless to avoid interrupting
-            browser = await p.chromium.launch(headless=False)
+            browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
             page = await context.new_page()
             

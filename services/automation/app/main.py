@@ -1191,7 +1191,7 @@ async def ollama_run_account_creation(
                 adapter = get_adapter(site.upper())
                 
                 async with async_playwright() as p:
-                    browser = await p.chromium.launch(headless=False)
+                    browser = await p.chromium.launch(headless=True)
                     page = await browser.new_page()
                     
                     # IMPORTANT: Use REAL Swiply credentials
@@ -1271,7 +1271,7 @@ async def ollama_run_profile_setup(
                 adapter = get_adapter(site.upper())
                 
                 async with async_playwright() as p:
-                    browser = await p.chromium.launch(headless=False)
+                    browser = await p.chromium.launch(headless=True)
                     page = await browser.new_page()
                     
                     # Login first
@@ -1328,7 +1328,7 @@ async def ollama_run_job_applications(
                 adapter = get_adapter(site.upper())
                 
                 async with async_playwright() as p:
-                    browser = await p.chromium.launch(headless=False)
+                    browser = await p.chromium.launch(headless=True)
                     page = await browser.new_page()
                     
                     # Login first
@@ -1428,7 +1428,7 @@ async def ollama_run_full_automation(
                     adapter = get_adapter(site.upper())
                     
                     async with async_playwright() as p:
-                        browser = await p.chromium.launch(headless=False)
+                        browser = await p.chromium.launch(headless=True)
                         page = await browser.new_page()
                         
                         result = await adapter.create_account(page, user_data['email'], user_data['password'], user_data)
@@ -1452,7 +1452,7 @@ async def ollama_run_full_automation(
                     adapter = get_adapter(site.upper())
                     
                     async with async_playwright() as p:
-                        browser = await p.chromium.launch(headless=False)
+                        browser = await p.chromium.launch(headless=True)
                         page = await browser.new_page()
                         
                         login_result = await adapter.login(page, request_data['email'], request_data['password'])
@@ -1485,7 +1485,7 @@ async def ollama_run_full_automation(
                         adapter = get_adapter(site.upper())
                         
                         async with async_playwright() as p:
-                            browser = await p.chromium.launch(headless=False)
+                            browser = await p.chromium.launch(headless=True)
                             page = await browser.new_page()
                             
                             login_result = await adapter.login(page, request_data['email'], request_data['password'])

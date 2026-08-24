@@ -140,7 +140,7 @@ class OllamaAutomationService:
             from playwright.async_api import async_playwright
             
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=False)
+                browser = await p.chromium.launch(headless=True)
                 
                 if "wttj" in sites:
                     try:
@@ -218,7 +218,7 @@ class OllamaAutomationService:
             from playwright.async_api import async_playwright
             
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=False)
+                browser = await p.chromium.launch(headless=True)
                 
                 if "wttj" in sites:
                     try:
@@ -290,7 +290,7 @@ class OllamaAutomationService:
             from playwright.async_api import async_playwright
             
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=False)
+                browser = await p.chromium.launch(headless=True)
                 
                 # Apply to WTTJ jobs
                 if "wttj" in job_urls:

@@ -469,7 +469,7 @@ async def example_usage():
     adapter = WTTJEnhancedAdapter(
         api_key=None,  # Set your API key here if available
         use_stealth=True,
-        headless=False
+        headless=True
     )
     
     try:

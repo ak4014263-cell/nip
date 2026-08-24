@@ -132,7 +132,7 @@ Return only valid JSON.
             from playwright.async_api import async_playwright
             
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=False)
+                browser = await p.chromium.launch(headless=True)
                 page = await browser.new_page()
                 
                 # Navigate to job URL
@@ -195,7 +195,7 @@ Return only valid JSON.
             from playwright.async_api import async_playwright
             
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=False)
+                browser = await p.chromium.launch(headless=True)
                 page = await browser.new_page()
                 
                 await page.goto(site_url)
@@ -359,7 +359,7 @@ What is the next action to take? Respond with JSON:
             plan = await self.generate_automation_plan(job_url, "apply to this job", candidate_data)
             
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=False)
+                browser = await p.chromium.launch(headless=True)
                 page = await browser.new_page()
                 
                 await page.goto(job_url)
@@ -393,7 +393,7 @@ What is the next action to take? Respond with JSON:
             
             from playwright.async_api import async_playwright
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=False)
+                browser = await p.chromium.launch(headless=True)
                 page = await browser.new_page()
                 
                 await page.goto(site_url)

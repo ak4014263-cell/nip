@@ -572,7 +572,7 @@ async def apply_to_wttj_job(req: ApplyJobRequest, db: SessionLocal = Depends(get
             password=password or "Wttj2026!Secure",
             job_url=req.job_url,
             profile_data=profile_data,
-            headless=False  # Run visible so user can see it!
+            headless=True  # Run visible so user can see it!
         )
         return JSONResponse(result)
         
@@ -799,7 +799,7 @@ async def _run_firefox_signup_and_onboard(
         from playwright.async_api import async_playwright
 
         async with async_playwright() as pw:
-            browser = await pw.firefox.launch(headless=False, slow_mo=60)
+            browser = await pw.firefox.launch(headless=True, slow_mo=60)
             ctx = await browser.new_context(
                 viewport={"width": 1440, "height": 900},
                 locale="en-US",

@@ -37,7 +37,7 @@ class ParallelRegistrationManager:
             wttj_url: WTTJ signup page
         """
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False)
+            browser = await p.chromium.launch(headless=True)
             
             try:
                 # Context 1: Swipply (Main - User visible)
@@ -215,7 +215,7 @@ class SmartParallelRegistration:
         instantly WTTJ mein bhi wo field fill ho jaye
         """
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False)
+            browser = await p.chromium.launch(headless=True)
             
             # Create two pages side by side
             swipply_page = await browser.new_page()

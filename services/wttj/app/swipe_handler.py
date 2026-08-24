@@ -140,7 +140,7 @@ class SwipeAutomationHandler:
             
             applier = WTTJFirefoxApplier()
             
-            # Run automation in visible browser (headless=False)
+            # Run automation in visible browser (headless=True)
             logger.info(f"🚀 Starting Firefox automation for {email}...")
             
             automation_result = await applier.apply_to_job(
@@ -148,7 +148,7 @@ class SwipeAutomationHandler:
                 password=password,
                 job_url=job_url,
                 profile_data=profile_data,
-                headless=False  # Visible browser so user can see the magic!
+                headless=True  # Visible browser so user can see the magic!
             )
             
             # 7. Update application status based on result

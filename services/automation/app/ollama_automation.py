@@ -597,7 +597,7 @@ class OllamaAutomationOrchestrator:
         }
         
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False)
+            browser = await p.chromium.launch(headless=True)
             
             try:
                 # ========== WTTJ WORKFLOW ==========

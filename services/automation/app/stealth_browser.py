@@ -387,7 +387,7 @@ class HumanBehaviorSimulator:
 # Example usage
 async def example_usage():
     """Example of using StealthBrowser"""
-    browser = StealthBrowser(headless=False)
+    browser = StealthBrowser(headless=True)
     
     try:
         page = await browser.launch()
