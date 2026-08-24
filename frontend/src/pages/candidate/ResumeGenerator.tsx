@@ -43,7 +43,7 @@ export default function ResumeGenerator() {
       const formDataUpload = new FormData()
       formDataUpload.append('file', file)
 
-      const response = await fetch('http://localhost:8010/analyze-resume', {
+      const response = await fetch('`${API_BASE}/ai`/analyze-resume', {
         method: 'POST',
         body: formDataUpload
       })
