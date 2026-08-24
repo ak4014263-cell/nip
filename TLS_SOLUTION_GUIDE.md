@@ -77,7 +77,7 @@ Browser Automation → JS Fingerprinting ✓ → TLS Handshake (Chrome 120) ✓
 
 ### Prerequisites
 ```bash
-pip install tls-client==1.7.5 curl-cffi==0.6.4
+pip install tls-client==1.0.1 curl-cffi==0.6.4
 pip install playwright==1.62.0 playwright-stealth
 pip install fastapi uvicorn
 ```
@@ -86,7 +86,7 @@ pip install fastapi uvicorn
 ```
 playwright==1.62.0
 playwright-stealth
-tls-client==1.7.5
+tls-client==1.0.1
 curl-cffi==0.6.4
 ```
 
@@ -398,7 +398,7 @@ playwright install chromium
 ### Issue: "TLS client connection error"
 **Solution:**
 ```bash
-pip install tls-client==1.7.5 --upgrade
+pip install tls-client==1.0.1 --upgrade
 pip install curl-cffi==0.6.4 --upgrade
 ```
 

@@ -7,7 +7,7 @@ ollama
 openai
 playwright==1.62.0
 playwright-stealth
-tls-client==1.7.5
+tls-client==1.0.1
 curl-cffi==0.6.4
 psycopg2-binary
 pydantic
