@@ -1,0 +1,12 @@
+fastapi==0.110.2
+uvicorn[standard]==0.29.0
+openai==1.30.0
+pydantic==2.7.1
+python-multipart==0.0.9
+PyPDF2==3.0.1
+python-docx==1.1.0
+httpx==0.25.2
+ollama==0.1.29
+redis==5.0.1
+schedule==1.2.0
+requests==2.31.0

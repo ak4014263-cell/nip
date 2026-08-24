@@ -1,0 +1,285 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: swiply-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-swiply}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-swiply123}
+      POSTGRES_DB: ${POSTGRES_DB:-swiply}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - swiply-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swiply"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: swiply-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - swiply-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # API Gateway
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: swiply-gateway
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swiply}:${POSTGRES_PASSWORD:-swiply123}@postgres:5432/${POSTGRES_DB:-swiply}
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Auth Service
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_NAME: auth
+        PORT: 8001
+    container_name: swiply-auth
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swiply}:${POSTGRES_PASSWORD:-swiply123}@postgres:5432/${POSTGRES_DB:-swiply}
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+
+  # Profile Service
+  profile:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_NAME: profile
+        PORT: 8004
+    container_name: swiply-profile
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swiply}:${POSTGRES_PASSWORD:-swiply123}@postgres:5432/${POSTGRES_DB:-swiply}
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+
+  # Job Service
+  job:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_NAME: job
+        PORT: 8003
+    container_name: swiply-job
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swiply}:${POSTGRES_PASSWORD:-swiply123}@postgres:5432/${POSTGRES_DB:-swiply}
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+
+  # Credential Service
+  credential:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_NAME: credential
+        PORT: 8009
+    container_name: swiply-credential
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swiply}:${POSTGRES_PASSWORD:-swiply123}@postgres:5432/${POSTGRES_DB:-swiply}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    ports:
+      - "8009:8009"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+
+  # Email Service
+  email:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_NAME: email
+        PORT: 8007
+    container_name: swiply-email
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swiply}:${POSTGRES_PASSWORD:-swiply123}@postgres:5432/${POSTGRES_DB:-swiply}
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+
+  # Automation Service
+  automation:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_NAME: automation
+        PORT: 8006
+    container_name: swiply-automation
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swiply}:${POSTGRES_PASSWORD:-swiply123}@postgres:5432/${POSTGRES_DB:-swiply}
+      - HEADLESS=true
+      - REDIS_HOST=redis
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+
+  # AI Service
+  ai:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_NAME: ai
+        PORT: 8010
+    container_name: swiply-ai
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8010:8010"
+    networks:
+      - swiply-network
+    restart: unless-stopped
+
+  # WTTJ Firefox Automation
+  wttj:
+    build:
+      context: .
+      dockerfile: Dockerfile.wttj
+    container_name: swiply-wttj
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swiply}:${POSTGRES_PASSWORD:-swiply123}@postgres:5432/${POSTGRES_DB:-swiply}
+      - REDIS_URL=redis://redis:6379/0
+      - HEADLESS=true
+    ports:
+      - "8012:8012"
+    volumes:
+      - ./screenshots:/app/screenshots
+      - ./firefox_profile:/app/firefox_profile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+    shm_size: '2gb'
+
+  # WTTJ Scraper Service
+  wttj_scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_NAME: wttj_scraper
+        PORT: 8013
+    container_name: swiply-wttj-scraper
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-swiply}:${POSTGRES_PASSWORD:-swiply123}@postgres:5432/${POSTGRES_DB:-swiply}
+    ports:
+      - "8013:8013"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+
+  # Frontend (Production Build)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+    container_name: swiply-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+    networks:
+      - swiply-network
+    restart: unless-stopped
+    depends_on:
+      - gateway
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  swiply-network:
+    driver: bridge

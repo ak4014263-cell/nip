@@ -1,0 +1,21 @@
+FROM python:3.11-slim
+
+ARG SERVICE_NAME
+ARG PORT
+ENV SERVICE_NAME=${SERVICE_NAME}
+ENV PORT=${PORT}
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy shared library
+COPY ./shared ./shared
+
+# Copy the specific service
+COPY ./services/${SERVICE_NAME} ./services/${SERVICE_NAME}
+
+# Run Uvicorn
+CMD ["sh", "-c", "python -m uvicorn services.${SERVICE_NAME}.app.main:app --host 0.0.0.0 --port ${PORT}"]

@@ -1,0 +1,6 @@
+@echo off
+REM Simple one-command startup for Swiply
+cd /d "c:\Users\hp\Downloads\WTJ"
+echo Swiply starting all services...
+echo Please wait while services initialize (30-60 seconds)...
+call START_ALL_SERVICES.bat

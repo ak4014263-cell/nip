@@ -1,0 +1,59 @@
+🤖 AI-POWERED WTTJ AUTOMATION SETUP
+========================================
+
+The AI automation uses OpenAI GPT-4 Vision to "see" the webpage and figure out how to click buttons.
+
+SETUP STEPS:
+------------
+
+1. Get OpenAI API Key:
+   - Go to: https://platform.openai.com/api-keys
+   - Create new key
+   - Copy the key (starts with sk-...)
+
+2. Set Environment Variable:
+   
+   Windows (CMD):
+   set OPENAI_API_KEY=sk-your-key-here
+   
+   Windows (PowerShell):
+   $env:OPENAI_API_KEY="sk-your-key-here"
+   
+   Linux/Mac:
+   export OPENAI_API_KEY=sk-your-key-here
+
+3. Install Required Package:
+   pip install openai
+
+4. Run the AI automation:
+   python ai_browser_automation.py
+
+HOW IT WORKS:
+-------------
+1. Script fills form fields normally
+2. Takes screenshot of the page
+3. Sends screenshot to GPT-4 Vision
+4. AI analyzes the page and identifies the submit button
+5. AI provides the best selector to click
+6. Script clicks the button using AI guidance
+
+BENEFITS:
+---------
+✅ AI can "see" the page like a human
+✅ Works even if button selector changes
+✅ Can identify why button is disabled
+✅ Adapts to page changes automatically
+✅ Can handle CAPTCHA detection
+✅ Provides debugging information
+
+COST:
+-----
+- GPT-4 Vision: ~$0.01 per screenshot analysis
+- Very affordable for account creation
+
+FALLBACK:
+---------
+If you don't want to use OpenAI:
+1. Use the semi-automated approach (user clicks manually)
+2. Use 2Captcha service integration
+3. Wait for WTTJ to provide API access
