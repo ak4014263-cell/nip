@@ -5,6 +5,7 @@ FastAPI endpoints for TLS-based WTTJ account creation
 import os
 import sys
 import logging
+import asyncio
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, List, Dict
@@ -18,6 +19,14 @@ if ROOT_DIR not in sys.path:
 from services.wttj.app.tls_account_service import (
     get_service, reset_service, TLSAccountService, RateLimitConfig
 )
+
+# Import bot bypass handler
+try:
+    from wttj_bot_bypass import WTTJBotBypass
+except ImportError:
+    WTTJBotBypass = None
+    logger_init = logging.getLogger(__name__)
+    logger_init.warning("⚠️ Bot bypass handler not available")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -276,6 +285,73 @@ async def get_statistics():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/bypass-bot-challenge")
+async def bypass_bot_challenge(
+    signup_url: str = "https://www.welcometothe.jungle/users/sign_up",
+    headless: bool = False,
+    proxy: Optional[str] = None
+):
+    """
+    Bypass WTTJ bot/captcha challenge before account creation
+    
+    Opens Firefox browser and navigates through Cloudflare/reCAPTCHA challenges
+    to get to the actual signup form.
+    
+    **Features:**
+    - Handles Cloudflare challenges
+    - Handles reCAPTCHA challenges
+    - Stealth Firefox with anti-detection headers
+    - Proxy support
+    
+    **Example:**
+    ```json
+    {
+        "signup_url": "https://www.welcometothe.jungle/users/sign_up",
+        "headless": false,
+        "proxy": "http://user:pass@proxy:8080"
+    }
+    ```
+    """
+    if not WTTJBotBypass:
+        raise HTTPException(
+            status_code=503,
+            detail="Bot bypass handler not available"
+        )
+    
+    try:
+        logger.info(f"🤖 Bot bypass requested for {signup_url}")
+        
+        bypass = WTTJBotBypass(headless=headless, use_proxy=proxy)
+        
+        try:
+            await bypass.launch()
+            result = await bypass.bypass_captcha(signup_url, timeout=60)
+            
+            if result:
+                logger.info("✅ Bot challenge bypassed successfully")
+                return {
+                    "status": "bypassed",
+                    "url": signup_url,
+                    "message": "Successfully bypassed bot/captcha challenge",
+                    "page_ready": True
+                }
+            else:
+                logger.warning("⚠️ Bot bypass may have failed")
+                return {
+                    "status": "partial",
+                    "url": signup_url,
+                    "message": "Attempted bot bypass with uncertain result",
+                    "page_ready": False
+                }
+        
+        finally:
+            await bypass.close()
+            
+    except Exception as e:
+        logger.error(f"❌ Bot bypass error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Bot bypass failed: {str(e)}")
+
+
 @router.get("/health")
 async def health_check():
     """Health check for TLS service"""
@@ -286,7 +362,8 @@ async def health_check():
             "status": "healthy",
             "service": "tls-account-creation",
             "requests_processed": len(service.creation_results),
-            "rate_limiter_active": True
+            "rate_limiter_active": True,
+            "bot_bypass_available": WTTJBotBypass is not None
         }
         
     except Exception as e:
