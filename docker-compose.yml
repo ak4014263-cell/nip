@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  # Caddy Reverse Proxy
+  caddy:
+    image: caddy:2-alpine
+    container_name: swiply-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+      - "8000:8000"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - swiply-network
+    depends_on:
+      - frontend
+      - gateway
+
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
@@ -46,8 +66,7 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DATABASE_URL=postgresql://swiply:swiply123@postgres:5432/swiply
-    ports:
-      - "8000:8000"
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -246,12 +265,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=http://www.swiply.io:8000
+        - VITE_API_URL=https://swiply.io:8000
     container_name: swiply-frontend
-    ports:
-      - "80:5173"
     environment:
-      - VITE_API_URL=http://www.swiply.io:8000
+      - VITE_API_URL=https://swiply.io:8000
     networks:
       - swiply-network
     restart: unless-stopped
@@ -259,6 +276,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   swiply-network:
