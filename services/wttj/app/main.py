@@ -860,9 +860,11 @@ async def _run_firefox_signup_and_onboard(
             async def human_type(selectors, text, label):
                 for sel in selectors:
                     try:
-                        el = page.locator(sel).first
+                        el = page.locator(sel).filter(state="visible").first
                         if await el.is_visible(timeout=5000):
-                            await el.fill(str(text))
+                            await el.scroll_into_view_if_needed()
+                            await el.click()
+                            await page.keyboard.type(str(text), delay=50)
                             await asyncio.sleep(0.3)
                             logger.info(f"âœ… Form filled: {label} = {text}")
                             return True
