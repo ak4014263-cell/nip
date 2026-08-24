@@ -11,6 +11,6 @@ COPY . .
 
 RUN npm run build
 
+RUN npm install -g serve
 EXPOSE 5173
-
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]
+CMD ["serve", "-s", "dist", "-l", "5173"]
