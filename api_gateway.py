@@ -56,18 +56,18 @@ app.add_middleware(
 
 # Service routing configuration
 SERVICES = {
-    "auth": "http://localhost:8001",
-    "user": "http://localhost:8002",
-    "job": "http://localhost:8003",
-    "profile": "http://localhost:8004",
-    "application": "http://localhost:8003",
-    "automation": "http://localhost:8006",
-    "email": "http://localhost:8007",
-    "gmail": "http://localhost:8008",
-    "credential": "http://localhost:8009",
-    "ai": "http://localhost:8010",
-    "wttj": "http://localhost:8012",
-    "wttj_scraper": "http://localhost:8013",
+    "auth": os.getenv("AUTH_URL", "http://auth:8001"),
+    "user": os.getenv("USER_URL", "http://user:8002"),
+    "job": os.getenv("JOB_URL", "http://job:8003"),
+    "profile": os.getenv("PROFILE_URL", "http://profile:8004"),
+    "application": os.getenv("APPLICATION_URL", "http://job:8003"),
+    "automation": os.getenv("AUTOMATION_URL", "http://automation:8006"),
+    "email": os.getenv("EMAIL_URL", "http://email:8007"),
+    "gmail": os.getenv("GMAIL_URL", "http://gmail:8008"),
+    "credential": os.getenv("CREDENTIAL_URL", "http://credential:8009"),
+    "ai": os.getenv("AI_URL", "http://ai:8010"),
+    "wttj": os.getenv("WTTJ_URL", "http://wttj:8012"),
+    "wttj_scraper": os.getenv("WTTJ_SCRAPER_URL", "http://wttj_scraper:8013"),
 }
 
 @app.get("/")
