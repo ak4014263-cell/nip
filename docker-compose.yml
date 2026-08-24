@@ -176,6 +176,25 @@ services:
       - swiply-network
     restart: unless-stopped
 
+  gmail:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_NAME: gmail
+        PORT: 8008
+    container_name: swiply-gmail
+    environment:
+      - DATABASE_URL=postgresql://swiply:swiply123@postgres:5432/swiply
+    ports:
+      - "8008:8008"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - swiply-network
+    restart: unless-stopped
+
   automation:
     build:
       context: .

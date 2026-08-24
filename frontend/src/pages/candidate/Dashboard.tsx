@@ -1123,7 +1123,7 @@ export default function Dashboard() {
                         <Lock size={11} className="text-emerald-400 flex-shrink-0" />
                         <span className="text-slate-500">https://</span>
                         <span className="text-slate-200 truncate">
-                          {liveState.current_url.replace('https://', '')}
+                          {liveState.current_url?.replace('https://', '')}
                         </span>
                       </div>
                     </div>
