@@ -9,11 +9,16 @@ import logging
 import time
 from typing import Optional, Dict, Any
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
+# playwright-stealth v2.0.3 only has sync 'stealth'
+# We'll apply stealth after page creation
 try:
     from playwright_stealth import stealth_async
-except ImportError:
-    # playwright-stealth v2 uses just 'stealth'
-    from playwright_stealth import stealth as stealth_async
+    USE_ASYNC_STEALTH = True
+except (ImportError, AttributeError):
+    # playwright_stealth v2 doesn't have stealth_async
+    # We'll skip stealth for now or use manual techniques
+    USE_ASYNC_STEALTH = False
+    stealth_async = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("wttj_bot_bypass")
@@ -66,13 +71,18 @@ class WTTJBotBypass:
                 timezone_id="America/New_York",
             )
             
-            # Apply stealth techniques
-            await stealth_async(self.context)
-            
-            # Create page
+            # Create page first
             self.page = await self.context.new_page()
             
-            logger.info("✅ Firefox browser launched with stealth settings")
+            # Apply stealth techniques if available
+            if USE_ASYNC_STEALTH and stealth_async:
+                try:
+                    await stealth_async(self.page)
+                    logger.info("✅ Stealth techniques applied")
+                except Exception as e:
+                    logger.warning(f"⚠️ Could not apply stealth: {e}")
+            
+            logger.info("✅ Firefox browser launched with anti-detection settings")
             return self.page
             
         except Exception as e:
