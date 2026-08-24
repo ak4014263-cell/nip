@@ -3,11 +3,6 @@
 WTTJ Dedicated Microservice
 Port 8012 - Welcome to the Jungle Account Creation, Onboarding, and Automation Service
 """
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
 import os
 import sys
 import uuid
@@ -16,19 +11,34 @@ import asyncio
 import re
 from datetime import datetime
 
+# Configure logging FIRST
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("wttj_microservice")
+
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+
+# Setup path for root imports BEFORE trying to import TLS
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 # TLS Account Service Integration
 try:
+    logger.info("Attempting to load TLS endpoints from relative import...")
     from .tls_endpoints import router as tls_router
-    logger = logging.getLogger("wttj_microservice")
     logger.info("✅ TLS endpoints loaded from relative import")
-except ImportError as e:
-    logger = logging.getLogger("wttj_microservice")
-    logger.error(f"❌ Failed to load TLS endpoints (relative): {e}")
+except Exception as e:
+    logger.error(f"❌ Failed to load TLS endpoints (relative): {type(e).__name__}: {e}", exc_info=True)
     try:
+        logger.info("Attempting to load TLS endpoints from direct import...")
         from tls_endpoints import router as tls_router
         logger.info("✅ TLS endpoints loaded from direct import")
-    except ImportError as e2:
-        logger.error(f"❌ Failed to load TLS endpoints (direct): {e2}")
+    except Exception as e2:
+        logger.error(f"❌ Failed to load TLS endpoints (direct): {type(e2).__name__}: {e2}", exc_info=True)
         tls_router = None
         logger.warning("⚠️  TLS endpoints not available")
 
@@ -63,9 +73,6 @@ try:
 except:
     from browser_controller import browser_controller
     from wttj_firefox_applier import WTTJFirefoxApplier
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("wttj_microservice")
 
 
 # ---------------------------------------------------------------------------
