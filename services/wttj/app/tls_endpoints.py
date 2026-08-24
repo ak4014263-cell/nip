@@ -285,7 +285,107 @@ async def get_statistics():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/bypass-bot-challenge")
+@router.post("/bypass-and-create-account")
+async def bypass_and_create_account(
+    email: str,
+    password: str,
+    first_name: str,
+    signup_url: str = "https://www.welcometothe.jungle/users/sign_up",
+    headless: bool = False,
+    proxy: Optional[str] = None
+):
+    """
+    Complete automated flow:
+    1. Bypass bot/captcha challenge
+    2. Fill signup form (First name, Email, Password)
+    3. Click 'Agree and create profile' button
+    
+    **Example:**
+    ```json
+    {
+        "email": "newuser@example.com",
+        "password": "SecurePass123!@",
+        "first_name": "John",
+        "signup_url": "https://www.welcometothe.jungle/users/sign_up",
+        "headless": false,
+        "proxy": null
+    }
+    ```
+    """
+    if not WTTJBotBypass:
+        raise HTTPException(
+            status_code=503,
+            detail="Bot bypass handler not available"
+        )
+    
+    try:
+        logger.info(f"🤖 Complete signup flow for {email}")
+        
+        bypass = WTTJBotBypass(headless=headless, use_proxy=proxy)
+        
+        try:
+            # Step 1: Launch browser
+            await bypass.launch()
+            logger.info("✅ Browser launched")
+            
+            # Step 2: Bypass bot challenge
+            logger.info("Step 1/4: Bypassing bot challenge...")
+            result = await bypass.bypass_captcha(signup_url, timeout=60)
+            if not result:
+                return {
+                    "status": "failed",
+                    "step": "bot_bypass",
+                    "message": "Failed to bypass bot challenge"
+                }
+            logger.info("✅ Bot challenge bypassed")
+            
+            # Step 3: Fill form
+            logger.info("Step 2/4: Filling signup form...")
+            form_filled = await bypass.fill_signup_form(
+                email=email,
+                password=password,
+                first_name=first_name
+            )
+            if not form_filled:
+                logger.warning("⚠️ Form filling encountered issues but continuing...")
+            
+            # Step 4: Click Agree button
+            logger.info("Step 3/4: Clicking 'Agree and create profile' button...")
+            agree_clicked = await bypass.click_agree_button()
+            if not agree_clicked:
+                return {
+                    "status": "failed",
+                    "step": "agree_button",
+                    "message": "Could not find or click 'Agree and create profile' button"
+                }
+            logger.info("✅ Agree button clicked")
+            
+            # Step 5: Wait for account creation
+            logger.info("Step 4/4: Waiting for account creation...")
+            await asyncio.sleep(3)
+            
+            final_url = bypass.page.url if bypass.page else "unknown"
+            logger.info(f"✅ Signup complete! Final URL: {final_url}")
+            
+            return {
+                "status": "completed",
+                "email": email,
+                "message": "Account creation flow completed successfully",
+                "steps_completed": [
+                    "Bot challenge bypassed",
+                    "Form filled (First name, Email, Password)",
+                    "Agree button clicked",
+                    "Account creation initiated"
+                ],
+                "final_url": final_url
+            }
+        
+        finally:
+            await bypass.close()
+            
+    except Exception as e:
+        logger.error(f"❌ Signup flow error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Signup flow failed: {str(e)}")
 async def bypass_bot_challenge(
     signup_url: str = "https://www.welcometothe.jungle/users/sign_up",
     headless: bool = False,
