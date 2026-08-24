@@ -298,37 +298,95 @@ class WTTJBotBypass:
         
         try:
             logger.info("Looking for 'Agree and create profile' button...")
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             
-            # The yellow button text "Agree and create profile"
-            agree_selectors = [
-                'button:text-matches("Agree and create profile")',
+            # Method 1: Try text-based selectors
+            text_selectors = [
+                'text="Agree and create profile"',
                 'button:has-text("Agree and create profile")',
-                'xpath=//button[contains(., "Agree and create profile")]',
-                'xpath=//button[contains(text(), "Agree")]',
+                'button >> text="Agree and create profile"',
             ]
             
-            for selector in agree_selectors:
+            for selector in text_selectors:
                 try:
-                    logger.info(f"Trying: {selector}")
-                    locator = self.page.locator(selector)
-                    count = await locator.count()
-                    if count > 0:
-                        logger.info(f"✅ Found button: {selector}")
-                        await locator.first.wait_for(state="visible")
-                        await locator.first.click()
-                        logger.info("✅ Clicked 'Agree and create profile' button")
-                        await asyncio.sleep(2)
+                    logger.info(f"Trying text selector: {selector}")
+                    element = await self.page.wait_for_selector(selector, timeout=5000, state="visible")
+                    if element:
+                        await element.click()
+                        logger.info("✅ Clicked via text selector")
+                        await asyncio.sleep(3)
                         return True
-                except Exception as e:
-                    logger.debug(f"Failed: {selector} - {e}")
+                except:
                     continue
             
-            logger.warning("⚠️ Could not find Agree button")
+            # Method 2: Try XPath
+            xpath_selectors = [
+                '//button[contains(text(), "Agree and create profile")]',
+                '//button[contains(., "Agree and create")]',
+                '//button[contains(@class, "btn") and contains(., "Agree")]',
+            ]
+            
+            for xpath in xpath_selectors:
+                try:
+                    logger.info(f"Trying XPath: {xpath}")
+                    element = await self.page.wait_for_selector(f'xpath={xpath}', timeout=5000, state="visible")
+                    if element:
+                        await element.click()
+                        logger.info("✅ Clicked via XPath")
+                        await asyncio.sleep(3)
+                        return True
+                except:
+                    continue
+            
+            # Method 3: Use JavaScript to find and click button
+            logger.info("Trying JavaScript approach...")
+            js_click_result = await self.page.evaluate("""
+                () => {
+                    const buttons = Array.from(document.querySelectorAll('button'));
+                    const agreeButton = buttons.find(btn => 
+                        btn.textContent.includes('Agree and create profile') || 
+                        btn.textContent.includes('Agree') ||
+                        btn.innerText.includes('Agree and create profile')
+                    );
+                    
+                    if (agreeButton) {
+                        agreeButton.click();
+                        return true;
+                    }
+                    return false;
+                }
+            """)
+            
+            if js_click_result:
+                logger.info("✅ Clicked via JavaScript")
+                await asyncio.sleep(3)
+                return True
+            
+            # Method 4: Find button by role and accessible name
+            logger.info("Trying role selector...")
+            try:
+                await self.page.click('role=button[name="Agree and create profile"]', timeout=5000)
+                logger.info("✅ Clicked via role selector")
+                await asyncio.sleep(3)
+                return True
+            except:
+                pass
+            
+            # Method 5: Get all buttons and log them for debugging
+            logger.warning("Could not find button, listing all buttons on page:")
+            buttons_text = await self.page.evaluate("""
+                () => {
+                    return Array.from(document.querySelectorAll('button'))
+                        .map(btn => btn.textContent.trim())
+                        .filter(text => text.length > 0);
+                }
+            """)
+            logger.info(f"Buttons found: {buttons_text}")
+            
             return False
             
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Error: {e}", exc_info=True)
             return False
     
     async def click_create_profile_button(self) -> bool:
