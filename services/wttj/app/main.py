@@ -870,7 +870,7 @@ async def _run_firefox_signup_and_onboard(
             async def human_type(selectors, text, label):
                 for sel in selectors:
                     try:
-                        el = page.locator(sel).filter(state="visible").first
+                        el = page.locator(sel).first
                         try:
                             await el.wait_for(state="visible", timeout=5000)
                         except Exception:
