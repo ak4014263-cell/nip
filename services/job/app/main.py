@@ -41,10 +41,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Service URLs
-AUTOMATION_SERVICE_URL = os.getenv("AUTOMATION_SERVICE_URL", "http://localhost:8006")
-CREDENTIAL_SERVICE_URL = os.getenv("CREDENTIAL_SERVICE_URL", "http://localhost:8009")
-EMAIL_SERVICE_URL = os.getenv("EMAIL_SERVICE_URL", "http://localhost:8007")
+# External Service URLs
+AUTOMATION_SERVICE_URL = os.getenv("AUTOMATION_SERVICE_URL", "http://automation:8006")
+CREDENTIAL_SERVICE_URL = os.getenv("CREDENTIAL_SERVICE_URL", "http://credential:8009")
+EMAIL_SERVICE_URL = os.getenv("EMAIL_SERVICE_URL", "http://email:8007")
 
 async def trigger_job_automation(candidate_id: str, job: DBJob, db: Session):
     """Trigger automation for job application"""
@@ -569,7 +569,7 @@ async def create_or_update_job(job_data: dict, db: Session = Depends(get_db)):
 async def trigger_wttj_job_sync(email: str = "daddy202028@gmail.com", password: str = "JobSwipeDemo2026!"):
     """Trigger background scraping of live WTTJ tailored jobs"""
     from wttj_scraper import WTTJLiveScraper
-    scraper = WTTJLiveScraper(job_service_url="http://localhost:8003")
+    scraper = WTTJLiveScraper(job_service_url="http://job:8003")
     result = await scraper.scrape_and_sync_jobs(email=email, password=password)
     return result
 

@@ -41,12 +41,12 @@ app.add_middleware(
 )
 
 # OpenAI Configuration - Now using dedicated AI service
-AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://localhost:8010")
+AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://ai:8010")
 
 # Service URLs
-AUTOMATION_SERVICE_URL = os.getenv("AUTOMATION_SERVICE_URL", "http://localhost:8006")
-CREDENTIAL_SERVICE_URL = os.getenv("CREDENTIAL_SERVICE_URL", "http://localhost:8009")
-PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "http://localhost:8004")
+AUTOMATION_SERVICE_URL = os.getenv("AUTOMATION_SERVICE_URL", "http://automation:8006")
+CREDENTIAL_SERVICE_URL = os.getenv("CREDENTIAL_SERVICE_URL", "http://credential:8009")
+PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "http://profile:8004")
 
 # Career sites to auto-create accounts on
 SUPPORTED_CAREER_SITES = ["WTTJ", "SNCF", "TOTAL_ENERGIES"]
