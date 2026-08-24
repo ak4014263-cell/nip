@@ -796,7 +796,9 @@ async def _run_firefox_signup_and_onboard(
     )
 
     try:
+        import random
         from playwright.async_api import async_playwright
+        from playwright_stealth import stealth_async
 
         async with async_playwright() as pw:
             browser = await pw.firefox.launch(headless=True, slow_mo=60)
@@ -806,6 +808,7 @@ async def _run_firefox_signup_and_onboard(
                 timezone_id="Europe/Paris",
             )
             page = await ctx.new_page()
+            await stealth_async(page)
 
             # Track registration API
             registered = False
@@ -868,9 +871,11 @@ async def _run_firefox_signup_and_onboard(
                         
                         if await el.is_visible():
                             await el.scroll_into_view_if_needed()
+                            await asyncio.sleep(random.uniform(0.5, 1.5))
                             await el.click()
-                            await page.keyboard.type(str(text), delay=50)
-                            await asyncio.sleep(0.3)
+                            await asyncio.sleep(random.uniform(0.2, 0.5))
+                            await page.keyboard.type(str(text), delay=random.randint(50, 150))
+                            await asyncio.sleep(random.uniform(0.5, 1.0))
                             logger.info(f"âœ… Form filled: {label} = {text}")
                             return True
                     except Exception as err:
