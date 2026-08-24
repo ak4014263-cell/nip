@@ -7,6 +7,7 @@ import asyncio
 import logging
 import os
 import sys
+import importlib.util
 from typing import Dict, Optional, List
 from datetime import datetime
 
@@ -15,10 +16,32 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-# Import components
-from tls_wttj_creator import WTTJTLSCreator, create_wttj_account_tls
-from rate_limiter import AdaptiveRateLimiter, RateLimitConfig, RequestMetrics
-from csrf_extractor import extract_wttj_tokens
+# Import components - handle both direct and root imports
+try:
+    from tls_wttj_creator import WTTJTLSCreator, create_wttj_account_tls
+    from rate_limiter import AdaptiveRateLimiter, RateLimitConfig, RequestMetrics
+    from csrf_extractor import extract_wttj_tokens
+except ImportError:
+    # Fallback to root level
+    import importlib.util
+    
+    spec_tls = importlib.util.spec_from_file_location("tls_wttj_creator", os.path.join(ROOT_DIR, "tls_wttj_creator.py"))
+    tls_module = importlib.util.module_from_spec(spec_tls)
+    spec_tls.loader.exec_module(tls_module)
+    WTTJTLSCreator = tls_module.WTTJTLSCreator
+    create_wttj_account_tls = tls_module.create_wttj_account_tls
+    
+    spec_rl = importlib.util.spec_from_file_location("rate_limiter", os.path.join(ROOT_DIR, "rate_limiter.py"))
+    rl_module = importlib.util.module_from_spec(spec_rl)
+    spec_rl.loader.exec_module(rl_module)
+    AdaptiveRateLimiter = rl_module.AdaptiveRateLimiter
+    RateLimitConfig = rl_module.RateLimitConfig
+    RequestMetrics = rl_module.RequestMetrics
+    
+    spec_csrf = importlib.util.spec_from_file_location("csrf_extractor", os.path.join(ROOT_DIR, "csrf_extractor.py"))
+    csrf_module = importlib.util.module_from_spec(spec_csrf)
+    spec_csrf.loader.exec_module(csrf_module)
+    extract_wttj_tokens = csrf_module.extract_wttj_tokens
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
