@@ -1,0 +1,49 @@
+{
+  "start_time": "2026-08-19T16:41:38.252793",
+  "tests": {
+    "ollama": {
+      "status": "pass",
+      "models": [
+        "llama2:latest",
+        "mistral-custom:latest",
+        "mistral:latest",
+        "llama3.2:3b",
+        "llama3.1:8b"
+      ]
+    },
+    "ai_content": {
+      "status": "pass",
+      "bio_length": 1259,
+      "answers_generated": 4,
+      "ats_score": 30
+    },
+    "wttj_account": {
+      "status": "pass",
+      "email": "test.wttj.automation@example.com",
+      "message": "Account creation successful"
+    },
+    "wttj_profile": {
+      "status": "pass",
+      "profile_data": {
+        "bio": "Title: Full Stack Developer - Test Automation\n\nTest Automation, a seasoned Full Stack Developer with",
+        "skills_count": 5
+      }
+    },
+    "wttj_browsing": {
+      "status": "pass",
+      "url": "https://www.welcometothejungle.com/en/jobs",
+      "screenshot": "wttj_jobs_page.png"
+    },
+    "integration": {
+      "status": "fail",
+      "reason": "Service not running"
+    }
+  },
+  "summary": {
+    "total_tests": 6,
+    "passed": 5,
+    "failed": 1,
+    "success_rate": "83.3%",
+    "end_time": "2026-08-19T16:45:49.804886"
+  }
+}
