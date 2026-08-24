@@ -75,6 +75,150 @@ class WTTJBotBypass:
             logger.error(f"Failed to launch browser: {e}")
             raise
     
+    async def accept_cookies(self) -> bool:
+        """Accept cookie consent banner"""
+        if not self.page:
+            return False
+        
+        try:
+            logger.info("Looking for cookie consent banner...")
+            await asyncio.sleep(1)
+            
+            # Common cookie button selectors
+            cookie_selectors = [
+                'button:has-text("Accept")',
+                'button:has-text("Accept all")',
+                'button:has-text("Accept cookies")',
+                'button:has-text("I accept")',
+                'button:has-text("Agree")',
+                'button:has-text("OK")',
+                'button[id*="accept"]',
+                'button[class*="accept"]',
+                'button[class*="consent"]',
+                'xpath=//button[contains(text(), "Accept")]',
+                'xpath=//button[contains(., "cookie")]',
+                '#onetrust-accept-btn-handler',
+                '.cookie-accept',
+                '[aria-label*="Accept"]',
+            ]
+            
+            for selector in cookie_selectors:
+                try:
+                    element = await self.page.wait_for_selector(selector, timeout=3000, state="visible")
+                    if element:
+                        await element.click()
+                        logger.info(f"✅ Accepted cookies via: {selector}")
+                        await asyncio.sleep(1)
+                        return True
+                except:
+                    continue
+            
+            # Try JavaScript approach
+            js_result = await self.page.evaluate("""
+                () => {
+                    const buttons = Array.from(document.querySelectorAll('button, a'));
+                    const cookieBtn = buttons.find(btn => 
+                        btn.textContent.toLowerCase().includes('accept') ||
+                        btn.textContent.toLowerCase().includes('agree') ||
+                        btn.getAttribute('id')?.includes('accept') ||
+                        btn.className?.includes('accept')
+                    );
+                    
+                    if (cookieBtn) {
+                        cookieBtn.click();
+                        return true;
+                    }
+                    return false;
+                }
+            """)
+            
+            if js_result:
+                logger.info("✅ Accepted cookies via JavaScript")
+                await asyncio.sleep(1)
+                return True
+            
+            logger.info("No cookie banner found (may already be accepted)")
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Cookie acceptance error (continuing anyway): {e}")
+            return True  # Don't fail if no cookie banner
+    
+    async def solve_captcha_if_present(self) -> bool:
+        """Detect and attempt to solve captcha"""
+        if not self.page:
+            return False
+        
+        try:
+            logger.info("Checking for captcha...")
+            await asyncio.sleep(2)
+            
+            # Check for reCAPTCHA
+            recaptcha_frame = await self.page.query_selector('iframe[src*="recaptcha"]')
+            if recaptcha_frame:
+                logger.info("⚠️ reCAPTCHA detected - attempting to solve...")
+                
+                # Method 1: Try clicking the checkbox
+                try:
+                    # Switch to reCAPTCHA iframe
+                    frames = self.page.frames
+                    recaptcha_checkbox_frame = None
+                    
+                    for frame in frames:
+                        if 'recaptcha' in frame.url and 'anchor' in frame.url:
+                            recaptcha_checkbox_frame = frame
+                            break
+                    
+                    if recaptcha_checkbox_frame:
+                        logger.info("Found reCAPTCHA checkbox frame")
+                        checkbox = await recaptcha_checkbox_frame.wait_for_selector('.recaptcha-checkbox-border', timeout=5000)
+                        if checkbox:
+                            await checkbox.click()
+                            logger.info("✅ Clicked reCAPTCHA checkbox")
+                            await asyncio.sleep(3)
+                            
+                            # Check if solved
+                            is_checked = await recaptcha_checkbox_frame.query_selector('.recaptcha-checkbox-checked')
+                            if is_checked:
+                                logger.info("✅ reCAPTCHA solved automatically!")
+                                return True
+                except Exception as e:
+                    logger.warning(f"reCAPTCHA checkbox click failed: {e}")
+                
+                # Method 2: Wait for manual solve or timeout
+                logger.warning("⚠️ reCAPTCHA may require manual solving - waiting 30 seconds...")
+                await asyncio.sleep(30)
+                
+                # Check if still present
+                still_present = await self.page.query_selector('iframe[src*="recaptcha"]')
+                if not still_present:
+                    logger.info("✅ reCAPTCHA solved (disappeared)")
+                    return True
+                else:
+                    logger.warning("⚠️ reCAPTCHA still present - continuing anyway")
+                    return False
+            
+            # Check for hCaptcha
+            hcaptcha_frame = await self.page.query_selector('iframe[src*="hcaptcha"]')
+            if hcaptcha_frame:
+                logger.warning("⚠️ hCaptcha detected - waiting for manual solve (30s)...")
+                await asyncio.sleep(30)
+                return True
+            
+            # Check for Cloudflare turnstile
+            turnstile = await self.page.query_selector('[name="cf-turnstile-response"]')
+            if turnstile:
+                logger.warning("⚠️ Cloudflare Turnstile detected - waiting...")
+                await asyncio.sleep(10)
+                return True
+            
+            logger.info("✅ No captcha detected")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Captcha detection error: {e}")
+            return True  # Continue anyway
+    
     async def bypass_captcha(self, url: str, timeout: int = 60) -> bool:
         """
         Navigate to URL and bypass bot/captcha challenges
@@ -110,6 +254,12 @@ class WTTJBotBypass:
             
             # Wait for navigation to complete
             await asyncio.sleep(2)
+            
+            # Step 1: Accept cookies
+            await self.accept_cookies()
+            
+            # Step 2: Solve captcha if present
+            await self.solve_captcha_if_present()
             
             # Check for common bot detection indicators
             title = await self.page.title()
