@@ -52,7 +52,9 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:4173",
         "https://swiply.io",
-        "https://www.swiply.io"
+        "https://www.swiply.io",
+        "http://swiply.io",
+        "http://www.swiply.io"
     ],
     allow_credentials=True,
     allow_methods=["*"],
