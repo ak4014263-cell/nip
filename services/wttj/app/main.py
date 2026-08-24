@@ -861,7 +861,12 @@ async def _run_firefox_signup_and_onboard(
                 for sel in selectors:
                     try:
                         el = page.locator(sel).filter(state="visible").first
-                        if await el.is_visible(timeout=5000):
+                        try:
+                            await el.wait_for(state="visible", timeout=5000)
+                        except Exception:
+                            pass
+                        
+                        if await el.is_visible():
                             await el.scroll_into_view_if_needed()
                             await el.click()
                             await page.keyboard.type(str(text), delay=50)
