@@ -798,7 +798,6 @@ async def _run_firefox_signup_and_onboard(
     try:
         import random
         from playwright.async_api import async_playwright
-        from playwright_stealth import stealth_async
 
         async with async_playwright() as pw:
             browser = await pw.firefox.launch(headless=True, slow_mo=60)
@@ -808,7 +807,10 @@ async def _run_firefox_signup_and_onboard(
                 timezone_id="Europe/Paris",
             )
             page = await ctx.new_page()
-            await stealth_async(page)
+            
+            # Basic JS stealth injection (avoids playwright-stealth dependency nightmares)
+            await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            
 
             # Track registration API
             registered = False
