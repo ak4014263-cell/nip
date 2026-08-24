@@ -19,12 +19,17 @@ from datetime import datetime
 # TLS Account Service Integration
 try:
     from .tls_endpoints import router as tls_router
-except ImportError:
+    logger = logging.getLogger("wttj_microservice")
+    logger.info("✅ TLS endpoints loaded from relative import")
+except ImportError as e:
+    logger = logging.getLogger("wttj_microservice")
+    logger.error(f"❌ Failed to load TLS endpoints (relative): {e}")
     try:
         from tls_endpoints import router as tls_router
-    except ImportError:
+        logger.info("✅ TLS endpoints loaded from direct import")
+    except ImportError as e2:
+        logger.error(f"❌ Failed to load TLS endpoints (direct): {e2}")
         tls_router = None
-        logger = logging.getLogger("wttj_microservice")
         logger.warning("⚠️  TLS endpoints not available")
 
 # Fix for Windows - Playwright subprocess issue
