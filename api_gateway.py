@@ -128,19 +128,10 @@ async def proxy_request(service_name: str, path: str, request: Request):
     service_url = SERVICES[service_name]
     target_url = f"{service_url}/{path}"
     
-    # Get request body if present
-    body = None
+    # Get raw request body if present
+    body = b""
     if request.method in ["POST", "PUT", "PATCH"]:
-        try:
-            # Try to get JSON body
-            body = await request.json()
-        except:
-            try:
-                # Try to get form data
-                body = await request.form()
-            except:
-                # No body or couldn't parse
-                pass
+        body = await request.body()
     
     # Prepare headers
     headers = dict(request.headers)
@@ -158,29 +149,21 @@ async def proxy_request(service_name: str, path: str, request: Request):
                     headers=headers
                 )
             elif request.method == "POST":
-                # Handle both JSON and form data
-                if isinstance(body, dict):
-                    response = await client.post(
-                        target_url,
-                        json=body,
-                        headers=headers
-                    )
-                else:
-                    response = await client.post(
-                        target_url,
-                        data=body,
-                        headers=headers
-                    )
+                response = await client.post(
+                    target_url,
+                    content=body,
+                    headers=headers
+                )
             elif request.method == "PUT":
                 response = await client.put(
                     target_url,
-                    json=body,
+                    content=body,
                     headers=headers
                 )
             elif request.method == "PATCH":
                 response = await client.patch(
                     target_url,
-                    json=body,
+                    content=body,
                     headers=headers
                 )
             elif request.method == "DELETE":
