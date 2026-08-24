@@ -154,8 +154,34 @@ class RemoteControlledBrowser:
             self.status = "submitting"
             logger.info("🔘 Clicking submit button...")
             
-            # Find and click submit button
-            submit_btn = self.driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]')
+            # Find and click submit button using multiple possible selectors
+            selectors = [
+                'button[data-testid="login-button-submit"]',
+                'button[data-testid="sign-up-form-submit-button"]',
+                'button[type="submit"]',
+                'button:contains("Sign in")',
+                'button:contains("Log in")',
+                'button:contains("Sign up")',
+                'button:contains("Create account")'
+            ]
+            
+            submit_btn = None
+            for selector in selectors:
+                try:
+                    if ':contains' in selector:
+                        # Fallback for pseudo-class in selenium
+                        text = selector.split('"')[1]
+                        submit_btn = self.driver.find_element(By.XPATH, f"//button[contains(., '{text}')]")
+                    else:
+                        submit_btn = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if submit_btn:
+                        logger.info(f"Found submit button with selector: {selector}")
+                        break
+                except:
+                    continue
+                    
+            if not submit_btn:
+                raise Exception("Could not find any submit button on the page")
             
             # Check if disabled
             if submit_btn.get_attribute('disabled'):
