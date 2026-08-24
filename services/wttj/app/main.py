@@ -800,11 +800,16 @@ async def _run_firefox_signup_and_onboard(
         from playwright.async_api import async_playwright
 
         async with async_playwright() as pw:
-            browser = await pw.firefox.launch(headless=True, slow_mo=60)
+            browser = await pw.chromium.launch(
+                headless=True, 
+                slow_mo=60,
+                args=['--disable-blink-features=AutomationControlled', '--disable-infobars']
+            )
             ctx = await browser.new_context(
                 viewport={"width": 1440, "height": 900},
                 locale="en-US",
                 timezone_id="Europe/Paris",
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
             page = await ctx.new_page()
             
