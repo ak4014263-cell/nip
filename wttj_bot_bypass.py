@@ -198,6 +198,211 @@ class WTTJBotBypass:
         """Get the current page after bypass"""
         return self.page
     
+    async def fill_signup_form(
+        self, 
+        email: str, 
+        password: str, 
+        first_name: str,
+        last_name: str = None
+    ) -> bool:
+        """Fill signup form with account details"""
+        if not self.page:
+            return False
+        
+        try:
+            logger.info(f"Filling signup form for {email}...")
+            await asyncio.sleep(1)
+            
+            # First name field (appears as "First name" label with "Hope" placeholder)
+            first_name_selectors = [
+                'input[placeholder="Hope"]',
+                'xpath=//input[@placeholder="Hope"]',
+                'input[name="firstName"]',
+                'input[name="first_name"]',
+            ]
+            
+            fname_filled = False
+            for selector in first_name_selectors:
+                try:
+                    locator = self.page.locator(selector)
+                    if await locator.count() > 0:
+                        logger.info(f"Filling first name with: {selector}")
+                        await locator.first.fill(first_name)
+                        fname_filled = True
+                        await asyncio.sleep(0.5)
+                        break
+                except:
+                    continue
+            
+            if not fname_filled:
+                logger.warning("Could not fill first name field")
+            
+            # Email field
+            email_selectors = [
+                'input[type="email"]',
+                'xpath=//input[@type="email"]',
+                'input[placeholder*="@gmail.com"]',
+                'input[name="email"]',
+            ]
+            
+            email_filled = False
+            for selector in email_selectors:
+                try:
+                    locator = self.page.locator(selector)
+                    if await locator.count() > 0:
+                        logger.info(f"Filling email with: {selector}")
+                        await locator.first.fill(email)
+                        email_filled = True
+                        await asyncio.sleep(0.5)
+                        break
+                except:
+                    continue
+            
+            if not email_filled:
+                logger.warning("Could not fill email field")
+            
+            # Password field
+            password_selectors = [
+                'input[type="password"]',
+                'xpath=//input[@type="password"]',
+                'input[name="password"]',
+            ]
+            
+            password_filled = False
+            for selector in password_selectors:
+                try:
+                    locator = self.page.locator(selector)
+                    if await locator.count() > 0:
+                        logger.info(f"Filling password with: {selector}")
+                        await locator.first.fill(password)
+                        password_filled = True
+                        await asyncio.sleep(0.5)
+                        break
+                except:
+                    continue
+            
+            if not password_filled:
+                logger.warning("Could not fill password field")
+            
+            logger.info("✅ Signup form filled")
+            return fname_filled and email_filled and password_filled
+            
+        except Exception as e:
+            logger.error(f"Error filling form: {e}")
+            return False
+    
+    async def click_agree_button(self) -> bool:
+        """Click 'Agree and create profile' yellow button"""
+        if not self.page:
+            return False
+        
+        try:
+            logger.info("Looking for 'Agree and create profile' button...")
+            await asyncio.sleep(1)
+            
+            # The yellow button text "Agree and create profile"
+            agree_selectors = [
+                'button:text-matches("Agree and create profile")',
+                'button:has-text("Agree and create profile")',
+                'xpath=//button[contains(., "Agree and create profile")]',
+                'xpath=//button[contains(text(), "Agree")]',
+            ]
+            
+            for selector in agree_selectors:
+                try:
+                    logger.info(f"Trying: {selector}")
+                    locator = self.page.locator(selector)
+                    count = await locator.count()
+                    if count > 0:
+                        logger.info(f"✅ Found button: {selector}")
+                        await locator.first.wait_for(state="visible")
+                        await locator.first.click()
+                        logger.info("✅ Clicked 'Agree and create profile' button")
+                        await asyncio.sleep(2)
+                        return True
+                except Exception as e:
+                    logger.debug(f"Failed: {selector} - {e}")
+                    continue
+            
+            logger.warning("⚠️ Could not find Agree button")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return False
+    
+    async def click_create_profile_button(self) -> bool:
+        """Click create profile/account button"""
+        if not self.page:
+            return False
+        
+        try:
+            logger.info("Looking for 'Create Profile' button...")
+            await asyncio.sleep(1)
+            
+            # Get all buttons on page
+            all_buttons = await self.page.locator("button").all()
+            logger.info(f"Found {len(all_buttons)} buttons on page")
+            
+            # Log button texts
+            for i, btn in enumerate(all_buttons[:15]):  # First 15 buttons
+                try:
+                    text = await btn.inner_text()
+                    logger.info(f"  Button {i}: '{text.strip()}'")
+                except:
+                    pass
+            
+            # Try common create profile selectors
+            create_selectors = [
+                'button:text("Create Profile")',
+                'button:text("Create profile")',
+                'button:text("create profile")',
+                'button:has-text("Create Profile")',
+                'button:text("Create Account")',
+                'button:text("Create")',
+                'button:text("Sign Up")',
+                'button:text("Register")',
+                'button:text("Join")',
+                'button[type="submit"]',
+                'button[class*="submit"]',
+                'button[class*="create"]',
+                'button[class*="signup"]',
+                'button[class*="register"]',
+                'xpath=//button[contains(text(), "Create Profile")]',
+                'xpath=//button[contains(text(), "Create")]',
+                'xpath=//button[@type="submit"]',
+            ]
+            
+            for selector in create_selectors:
+                try:
+                    logger.info(f"Trying selector: {selector}")
+                    locator = self.page.locator(selector)
+                    count = await locator.count()
+                    if count > 0:
+                        logger.info(f"✅ Found {count} elements with selector: {selector}")
+                        # Make sure it's visible
+                        await locator.first.wait_for(state="visible", timeout=5000)
+                        await locator.first.click()
+                        logger.info("✅ Clicked Create Profile button")
+                        await asyncio.sleep(3)
+                        # Wait for form submission
+                        try:
+                            await self.page.wait_for_load_state("networkidle", timeout=10000)
+                            logger.info("✅ Form submitted and page loaded")
+                        except:
+                            logger.info("Page load completed (with timeout)")
+                        return True
+                except Exception as e:
+                    logger.debug(f"Selector failed: {selector} - {e}")
+                    continue
+            
+            logger.warning("⚠️ Could not find Create Profile button")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error clicking create profile button: {e}", exc_info=True)
+            return False
+    
     async def close(self):
         """Close browser"""
         try:
