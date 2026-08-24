@@ -245,11 +245,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://www.swiply.io:8000
     container_name: swiply-frontend
     ports:
-      - "5173:5173"
+      - "80:5173"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://www.swiply.io:8000
     networks:
       - swiply-network
     restart: unless-stopped
