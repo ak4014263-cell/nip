@@ -21,6 +21,7 @@ COPY tls_wttj_creator.py .
 COPY rate_limiter.py .
 COPY csrf_extractor.py .
 COPY wttj_bot_bypass.py .
+COPY captcha_solver.py .
 
 # Ensure screenshots and profile directories exist
 RUN mkdir -p screenshots firefox_profile

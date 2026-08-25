@@ -28,6 +28,18 @@ except ImportError:
     logger_init = logging.getLogger(__name__)
     logger_init.warning("⚠️ Bot bypass handler not available")
 
+# Import captcha solver (requires CAPTCHA_API_KEY env var to actually solve)
+try:
+    from captcha_solver import (
+        CaptchaSolver, detect_recaptcha_config, inject_recaptcha_token, WTTJ_SITE_KEY
+    )
+except ImportError:
+    CaptchaSolver = None
+    detect_recaptcha_config = None
+    inject_recaptcha_token = None
+    WTTJ_SITE_KEY = "6Lek6X8jAAAAADI-_bRv_LqNz_S6LE5do6UZf6og"
+    logging.getLogger(__name__).warning("⚠️ Captcha solver not available")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -397,6 +409,53 @@ async def bypass_and_create_account(
             bypass.page.on("console", _on_console)
             bypass.page.on("pageerror", lambda e: console_messages.append(f"[pageerror] {str(e)[:200]}"))
             
+            # Step 3.5: Solve reCAPTCHA (the confirmed blocker: server returns
+            # 400 invalid_recaptcha for automated browsers without a valid token)
+            captcha_info = {"attempted": False, "solved": False, "provider": None, "version": None}
+            if CaptchaSolver is not None:
+                solver = CaptchaSolver()
+                captcha_info["provider"] = solver.provider
+                if solver.enabled:
+                    captcha_info["attempted"] = True
+                    logger.info("🧩 Solving reCAPTCHA via captcha service...")
+                    try:
+                        cfg = await detect_recaptcha_config(bypass.page)
+                        site_key = cfg.get("site_key") or WTTJ_SITE_KEY
+                        version = cfg.get("version") or "v3"
+                        captcha_info["version"] = version
+                        page_url = bypass.page.url
+
+                        token = None
+                        if version == "v3":
+                            token = await solver.solve_recaptcha_v3(
+                                site_key=site_key, page_url=page_url, action="submit"
+                            )
+                            # Fallback to v2-invisible if v3 fails
+                            if not token:
+                                logger.info("v3 solve failed, trying v2-invisible...")
+                                token = await solver.solve_recaptcha_v2(
+                                    site_key=site_key, page_url=page_url, invisible=True
+                                )
+                        else:
+                            token = await solver.solve_recaptcha_v2(
+                                site_key=site_key, page_url=page_url,
+                                invisible=cfg.get("invisible", True)
+                            )
+
+                        if token:
+                            await inject_recaptcha_token(bypass.page, token)
+                            captcha_info["solved"] = True
+                            logger.info("✅ reCAPTCHA token injected")
+                        else:
+                            logger.warning("⚠️ Captcha service did not return a token")
+                    except Exception as cap_ex:
+                        logger.error(f"Captcha solving error: {cap_ex}")
+                else:
+                    logger.warning(
+                        "⚠️ No CAPTCHA_API_KEY configured. Registration will be "
+                        "rejected with invalid_recaptcha. Set CAPTCHA_API_KEY to enable."
+                    )
+            
             # Step 4: Click Agree button
             logger.info("Step 3/4: Clicking 'Agree and create profile' button...")
             agree_clicked = await bypass.click_agree_button()
@@ -485,6 +544,7 @@ async def bypass_and_create_account(
                 "console_errors": console_messages[:20],
                 "registration_api_success": api_success,
                 "registration_api_rejected": api_rejected,
+                "captcha": captcha_info,
             }
         
         finally:

@@ -244,6 +244,8 @@ services:
       - DATABASE_URL=postgresql://swiply:swiply123@postgres:5432/swiply
       - REDIS_URL=redis://redis:6379/0
       - HEADLESS=false
+      - CAPTCHA_API_KEY=${CAPTCHA_API_KEY:-}
+      - CAPTCHA_PROVIDER=${CAPTCHA_PROVIDER:-2captcha}
     ports:
       - "8012:8012"
     volumes:
