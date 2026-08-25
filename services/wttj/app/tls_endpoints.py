@@ -351,30 +351,51 @@ async def bypass_and_create_account(
             
             # Set up network monitoring to capture the registration API response
             captured_responses = []
+            console_messages = []
             
             async def _on_response(response):
                 try:
+                    method = response.request.method
                     url_l = response.url.lower()
-                    if any(k in url_l for k in ["register", "signup", "sign_up", "graphql", "account", "auth", "user"]):
+                    # Capture all POST/PUT (form submissions) and any registration-related calls
+                    is_relevant = (
+                        method in ("POST", "PUT", "PATCH")
+                        or any(k in url_l for k in ["register", "signup", "sign_up", "graphql", "account", "auth"])
+                    )
+                    # Skip noise (analytics, tracking pixels, static assets)
+                    is_noise = any(k in url_l for k in [
+                        ".png", ".jpg", ".svg", ".css", ".woff", ".gif",
+                        "google-analytics", "googletagmanager", "segment", "datadog",
+                        "sentry", "hotjar", "doubleclick", "facebook", "/gtm", "/collect"
+                    ])
+                    if is_relevant and not is_noise:
                         entry = {
-                            "url": response.url,
+                            "url": response.url[:200],
                             "status": response.status,
-                            "method": response.request.method,
+                            "method": method,
                         }
-                        # Try to capture response body for API calls (not documents)
                         try:
                             ct = response.headers.get("content-type", "")
                             if "json" in ct or "text" in ct:
                                 body = await response.text()
-                                entry["body"] = body[:500]
+                                entry["body"] = body[:400]
                         except Exception:
                             pass
                         captured_responses.append(entry)
-                        logger.info(f"🌐 API Response: {response.request.method} {response.status} {response.url}")
+                        logger.info(f"🌐 {method} {response.status} {response.url[:120]}")
+                except Exception:
+                    pass
+            
+            def _on_console(msg):
+                try:
+                    if msg.type in ("error", "warning"):
+                        console_messages.append(f"[{msg.type}] {msg.text[:200]}")
                 except Exception:
                     pass
             
             bypass.page.on("response", lambda r: asyncio.create_task(_on_response(r)))
+            bypass.page.on("console", _on_console)
+            bypass.page.on("pageerror", lambda e: console_messages.append(f"[pageerror] {str(e)[:200]}"))
             
             # Step 4: Click Agree button
             logger.info("Step 3/4: Clicking 'Agree and create profile' button...")
@@ -422,8 +443,9 @@ async def bypass_and_create_account(
             
             # Detect actual success: URL should change away from signup page
             url_changed = final_url != initial_url and "signup" not in final_url.lower() and "sign_up" not in final_url.lower()
-            # Onboarding redirect also indicates success
-            onboarding_reached = any(k in final_url.lower() for k in ["onboarding", "complete-profile", "welcome"])
+            # Onboarding redirect also indicates success (use path-specific markers, NOT "welcome" which is in the domain)
+            final_path = final_url.lower()
+            onboarding_reached = any(k in final_path for k in ["/onboarding", "complete-profile", "/dashboard", "/home"])
             
             # Check captured API responses for registration result
             registration_api = [r for r in captured_responses if any(k in r["url"].lower() for k in ["register", "signup", "sign_up", "graphql"])]
@@ -459,7 +481,8 @@ async def bypass_and_create_account(
                 "onboarding_reached": onboarding_reached,
                 "page_title": page_title,
                 "error_messages_on_page": error_messages,
-                "api_responses": captured_responses[:15],
+                "api_responses": captured_responses[:20],
+                "console_errors": console_messages[:20],
                 "registration_api_success": api_success,
                 "registration_api_rejected": api_rejected,
             }
