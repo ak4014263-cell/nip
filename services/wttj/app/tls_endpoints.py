@@ -333,7 +333,12 @@ async def bypass_and_create_account(
     try:
         logger.info(f"🤖 Complete signup flow for {email}")
         
-        bypass = WTTJBotBypass(headless=headless, use_proxy=proxy)
+        # Fall back to PROXY_URL env var if no proxy passed in the request
+        effective_proxy = proxy or os.getenv("PROXY_URL", "").strip() or None
+        if effective_proxy:
+            logger.info("🔗 Proxy configured for this signup")
+        
+        bypass = WTTJBotBypass(headless=headless, use_proxy=effective_proxy)
         
         try:
             # Step 1: Launch browser

@@ -246,6 +246,7 @@ services:
       - HEADLESS=false
       - CAPTCHA_API_KEY=${CAPTCHA_API_KEY:-}
       - CAPTCHA_PROVIDER=${CAPTCHA_PROVIDER:-2captcha}
+      - PROXY_URL=${PROXY_URL:-}
     ports:
       - "8012:8012"
     volumes:

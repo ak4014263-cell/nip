@@ -57,7 +57,24 @@ class WTTJBotBypass:
             }
             
             if self.proxy:
-                launch_args["proxy"] = {"server": self.proxy}
+                # Parse proxy URL to separate credentials (Playwright needs them split)
+                from urllib.parse import urlparse
+                parsed = urlparse(self.proxy)
+                if parsed.username or parsed.password:
+                    # Rebuild server without credentials
+                    scheme = parsed.scheme or "http"
+                    server = f"{scheme}://{parsed.hostname}"
+                    if parsed.port:
+                        server += f":{parsed.port}"
+                    launch_args["proxy"] = {
+                        "server": server,
+                        "username": parsed.username or "",
+                        "password": parsed.password or "",
+                    }
+                    logger.info(f"🔗 Using proxy: {server} (with auth)")
+                else:
+                    launch_args["proxy"] = {"server": self.proxy}
+                    logger.info(f"🔗 Using proxy: {self.proxy}")
             
             # Launch Firefox browser
             self.browser = await playwright.firefox.launch(**launch_args)
