@@ -362,22 +362,61 @@ async def bypass_and_create_account(
             
             # Step 5: Wait for account creation
             logger.info("Step 4/4: Waiting for account creation...")
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
             
             final_url = bypass.page.url if bypass.page else "unknown"
-            logger.info(f"✅ Signup complete! Final URL: {final_url}")
+            initial_url = signup_url
+            
+            # Capture screenshot and any error messages for diagnosis
+            error_messages = []
+            page_title = ""
+            try:
+                page_title = await bypass.page.title()
+                # Look for common error indicators
+                error_messages = await bypass.page.evaluate("""() => {
+                    const errors = [];
+                    // Standard error selectors
+                    document.querySelectorAll('[class*="error" i], [role="alert"], [class*="invalid" i], [class*="Error"]').forEach(el => {
+                        const t = el.textContent.trim();
+                        if (t && t.length < 300) errors.push(t);
+                    });
+                    return [...new Set(errors)].slice(0, 10);
+                }""")
+                
+                # Save screenshot
+                import os
+                screenshot_dir = "/app/screenshots"
+                os.makedirs(screenshot_dir, exist_ok=True)
+                screenshot_path = f"{screenshot_dir}/signup_result_{email.replace('@','_at_')}.png"
+                await bypass.page.screenshot(path=screenshot_path, full_page=True)
+                logger.info(f"📸 Screenshot saved: {screenshot_path}")
+            except Exception as diag_ex:
+                logger.warning(f"Diagnostics capture failed: {diag_ex}")
+            
+            # Detect actual success: URL should change away from signup page
+            url_changed = final_url != initial_url and "signup" not in final_url.lower() and "sign_up" not in final_url.lower()
+            
+            status = "completed" if url_changed else "form_submitted_but_not_navigated"
+            
+            logger.info(f"✅ Signup flow ended. Final URL: {final_url}, Changed: {url_changed}")
             
             return {
-                "status": "completed",
+                "status": status,
                 "email": email,
-                "message": "Account creation flow completed successfully",
+                "message": (
+                    "Account creation flow completed successfully" if url_changed
+                    else "Form submitted but page did not navigate away from signup - form may have validation errors"
+                ),
                 "steps_completed": [
                     "Bot challenge bypassed",
                     "Form filled (First name, Email, Password)",
                     "Agree button clicked",
-                    "Account creation initiated"
                 ],
-                "final_url": final_url
+                "initial_url": initial_url,
+                "final_url": final_url,
+                "url_changed": url_changed,
+                "page_title": page_title,
+                "error_messages_on_page": error_messages,
             }
         
         finally:

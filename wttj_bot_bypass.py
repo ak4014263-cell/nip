@@ -375,14 +375,60 @@ class WTTJBotBypass:
         
         try:
             logger.info(f"Filling signup form for {email}...")
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             
-            # First name field (appears as "First name" label with "Hope" placeholder)
+            # Debug: capture all input fields info for diagnostics
+            try:
+                inputs_info = await self.page.evaluate("""() => {
+                    const inputs = Array.from(document.querySelectorAll('input'));
+                    return inputs.map(i => ({
+                        type: i.type,
+                        name: i.name,
+                        id: i.id,
+                        placeholder: i.placeholder,
+                        ariaLabel: i.getAttribute('aria-label'),
+                        dataTestId: i.getAttribute('data-testid'),
+                        autocomplete: i.autocomplete
+                    }));
+                }""")
+                logger.info(f"[DEBUG] Found {len(inputs_info)} input fields on page:")
+                for idx, info in enumerate(inputs_info):
+                    logger.info(f"  [{idx}] {info}")
+            except Exception as e:
+                logger.warning(f"Could not enumerate inputs: {e}")
+            
+            # First name field - comprehensive selector list
             first_name_selectors = [
-                'input[placeholder="Hope"]',
-                'xpath=//input[@placeholder="Hope"]',
+                # Autocomplete attribute (most reliable)
+                'input[autocomplete="given-name"]',
+                # Data-testid patterns
+                'input[data-testid*="first"i]',
+                'input[data-testid*="firstname"i]',
+                # Name attribute variations
                 'input[name="firstName"]',
                 'input[name="first_name"]',
+                'input[name="firstname"]',
+                'input[name="prenom"]',
+                # ID variations
+                'input#firstName',
+                'input#first_name',
+                'input#firstname',
+                # Placeholder patterns (English + French)
+                'input[placeholder="Hope"]',
+                'input[placeholder*="First name" i]',
+                'input[placeholder*="first-name" i]',
+                'input[placeholder*="Prénom" i]',
+                'input[placeholder*="Prenom" i]',
+                # Aria label
+                'input[aria-label*="First name" i]',
+                'input[aria-label*="Prénom" i]',
+                # Label-based (parent has label with "First name")
+                'label:has-text("First name") input',
+                'label:has-text("Prénom") input',
+                # XPath fallback: input following a label containing First name
+                'xpath=//label[contains(., "First name")]//input',
+                'xpath=//label[contains(., "Prénom")]//input',
+                'xpath=//input[@placeholder="Hope"]',
             ]
             
             fname_filled = False
@@ -395,11 +441,37 @@ class WTTJBotBypass:
                         fname_filled = True
                         await asyncio.sleep(0.5)
                         break
-                except:
+                except Exception as sel_ex:
                     continue
             
+            # Fallback: pick the first text input that isn't email/password
             if not fname_filled:
-                logger.warning("Could not fill first name field")
+                try:
+                    logger.info("Trying fallback: first non-email/password text input")
+                    fallback_result = await self.page.evaluate("""(name) => {
+                        const inputs = Array.from(document.querySelectorAll('input'));
+                        for (const i of inputs) {
+                            const t = (i.type || '').toLowerCase();
+                            if (t === 'text' || t === '' || t === 'search') {
+                                if (i.name?.toLowerCase().includes('last')) continue;
+                                if (i.placeholder?.toLowerCase().includes('last')) continue;
+                                i.focus();
+                                const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                                setter.call(i, name);
+                                i.dispatchEvent(new Event('input', {bubbles: true}));
+                                i.dispatchEvent(new Event('change', {bubbles: true}));
+                                return {ok: true, selector: i.name || i.id || i.placeholder};
+                            }
+                        }
+                        return {ok: false};
+                    }""", first_name)
+                    if fallback_result.get('ok'):
+                        logger.info(f"✅ First name filled via JS fallback: {fallback_result.get('selector')}")
+                        fname_filled = True
+                    else:
+                        logger.warning("Could not fill first name field (no text input found)")
+                except Exception as e:
+                    logger.warning(f"Fallback also failed: {e}")
             
             # Email field
             email_selectors = [
