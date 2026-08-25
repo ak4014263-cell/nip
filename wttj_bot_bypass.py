@@ -697,93 +697,90 @@ class WTTJBotBypass:
             except Exception as mm_ex:
                 logger.debug(f"Mouse movement simulation skipped: {mm_ex}")
             
-            # Method 1: Try text-based selectors with hover + click (more human-like)
+            # Method 1: Text-based selectors (English + French) with hover+click
             text_selectors = [
+                # French (WTTJ /fr)
+                'button:has-text("Accepter et créer mon profil")',
+                'button:has-text("Créer mon profil")',
+                'button:has-text("Créer un compte")',
+                # English (WTTJ /en, /en-GB)
                 'button:has-text("Agree and create profile")',
-                'text="Agree and create profile"',
-                'button >> text="Agree and create profile"',
+                'button:has-text("Create profile")',
+                'button:has-text("Create account")',
             ]
             
             for selector in text_selectors:
                 try:
                     logger.info(f"Trying text selector: {selector}")
-                    element = await self.page.wait_for_selector(selector, timeout=5000, state="visible")
+                    element = await self.page.wait_for_selector(selector, timeout=3000, state="visible")
                     if element:
-                        # Scroll into view first
                         await element.scroll_into_view_if_needed()
                         await asyncio.sleep(0.5)
-                        # Hover to trigger any human behavior tracking
                         await element.hover()
                         await asyncio.sleep(0.4)
-                        # Then click
                         await element.click()
-                        logger.info("✅ Clicked via text selector")
+                        logger.info(f"✅ Clicked via text selector: {selector}")
                         await asyncio.sleep(3)
                         return True
                 except:
                     continue
             
-            # Method 2: Try XPath
-            xpath_selectors = [
-                '//button[contains(text(), "Agree and create profile")]',
-                '//button[contains(., "Agree and create")]',
-                '//button[contains(@class, "btn") and contains(., "Agree")]',
-            ]
-            
-            for xpath in xpath_selectors:
-                try:
-                    logger.info(f"Trying XPath: {xpath}")
-                    element = await self.page.wait_for_selector(f'xpath={xpath}', timeout=5000, state="visible")
-                    if element:
-                        await element.click()
-                        logger.info("✅ Clicked via XPath")
-                        await asyncio.sleep(3)
-                        return True
-                except:
-                    continue
-            
-            # Method 3: Use JavaScript to find and click button
-            logger.info("Trying JavaScript approach...")
-            js_click_result = await self.page.evaluate("""
-                () => {
-                    const buttons = Array.from(document.querySelectorAll('button'));
-                    const agreeButton = buttons.find(btn => 
-                        btn.textContent.includes('Agree and create profile') || 
-                        btn.textContent.includes('Agree') ||
-                        btn.innerText.includes('Agree and create profile')
-                    );
-                    
-                    if (agreeButton) {
-                        agreeButton.click();
-                        return true;
-                    }
-                    return false;
-                }
-            """)
-            
-            if js_click_result:
-                logger.info("✅ Clicked via JavaScript")
-                await asyncio.sleep(3)
-                return True
-            
-            # Method 4: Find button by role and accessible name
-            logger.info("Trying role selector...")
+            # Method 2: type=submit button (language-agnostic, most reliable)
             try:
-                await self.page.click('role=button[name="Agree and create profile"]', timeout=5000)
-                logger.info("✅ Clicked via role selector")
-                await asyncio.sleep(3)
-                return True
+                logger.info("Trying submit button (type=submit)...")
+                element = await self.page.wait_for_selector('button[type="submit"]', timeout=3000, state="visible")
+                if element:
+                    await element.scroll_into_view_if_needed()
+                    await asyncio.sleep(0.4)
+                    await element.hover()
+                    await asyncio.sleep(0.3)
+                    await element.click()
+                    logger.info("✅ Clicked submit button")
+                    await asyncio.sleep(3)
+                    return True
             except:
                 pass
             
-            # Method 5: Get all buttons and log them for debugging
+            # Method 3: JavaScript - find the signup submit button by known
+            # French/English keywords, else fall back to the last form button.
+            logger.info("Trying JavaScript approach...")
+            js_click_result = await self.page.evaluate("""
+                () => {
+                    const keywords = [
+                        'accepter et créer', 'créer mon profil', 'créer un compte',
+                        'agree and create', 'create profile', 'create account'
+                    ];
+                    const buttons = Array.from(document.querySelectorAll('button'));
+                    let target = buttons.find(btn => {
+                        const t = (btn.textContent || '').trim().toLowerCase();
+                        return keywords.some(k => t.includes(k));
+                    });
+                    // Fallback: a submit button, else the last visible button
+                    if (!target) target = buttons.find(b => b.type === 'submit');
+                    if (!target) {
+                        const visible = buttons.filter(b => b.offsetParent !== null);
+                        target = visible[visible.length - 1];
+                    }
+                    if (target) {
+                        target.scrollIntoView({block: 'center'});
+                        target.click();
+                        return {ok: true, text: (target.textContent || '').trim()};
+                    }
+                    return {ok: false};
+                }
+            """)
+            
+            if js_click_result and js_click_result.get('ok'):
+                logger.info(f"✅ Clicked via JavaScript: {js_click_result.get('text')}")
+                await asyncio.sleep(3)
+                return True
+            
+            # Debug: list buttons
             logger.warning("Could not find button, listing all buttons on page:")
             buttons_text = await self.page.evaluate("""
-                () => {
-                    return Array.from(document.querySelectorAll('button'))
-                        .map(btn => btn.textContent.trim())
-                        .filter(text => text.length > 0);
-                }
+                () => Array.from(document.querySelectorAll('button'))
+                    .map(btn => btn.textContent.trim())
+                    .filter(text => text.length > 0)
             """)
             logger.info(f"Buttons found: {buttons_text}")
             
