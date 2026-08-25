@@ -43,18 +43,35 @@ class WTTJBotBypass:
         self.page: Optional[Page] = None
         
     async def launch(self):
-        """Launch Firefox browser with stealth settings"""
+        """Launch Firefox browser with stealth settings.
+
+        Uses the SAME proven anti-detection configuration as the working
+        wttj_firefox_applier.py (firefox_user_prefs to disable webdriver
+        detection). Chrome-style --args do NOT work in Firefox and were removed.
+        """
         try:
             playwright = await async_playwright().start()
             
             launch_args = {
                 "headless": self.headless,
-                "args": [
-                    "--disable-blink-features=AutomationControlled",
-                    "--disable-web-resources",
-                    "--no-first-run",
-                    "--no-default-browser-check",
-                ]
+                "firefox_user_prefs": {
+                    # Disable automation detection (matches proven applier)
+                    "dom.webdriver.enabled": False,
+                    "useAutomationExtension": False,
+                    # Privacy & security settings
+                    "privacy.trackingprotection.enabled": True,
+                    "privacy.trackingprotection.socialtracking.enabled": True,
+                    "privacy.donottrackheader.enabled": True,
+                    # Performance settings
+                    "network.http.pipelining": True,
+                    "network.http.proxy.pipelining": True,
+                    "network.http.pipelining.maxrequests": 8,
+                    # Disable WebRTC leak
+                    "media.peerconnection.enabled": False,
+                    # Mimic real browser platform
+                    "general.platform.override": "Win64",
+                    "general.oscpu.override": "Windows NT 10.0; Win64; x64",
+                },
             }
             
             if self.proxy:
@@ -80,18 +97,95 @@ class WTTJBotBypass:
             # Launch Firefox browser
             self.browser = await playwright.firefox.launch(**launch_args)
             
-            # Create context with anti-detection settings.
-            # Locale/timezone default to UK (matches en-GB signup + UK residential
-            # proxy) for reCAPTCHA v3 geo-consistency. Override via env if needed.
-            browser_locale = os.getenv("BROWSER_LOCALE", "en-GB")
-            browser_tz = os.getenv("BROWSER_TIMEZONE", "Europe/London")
+            # Create context with the EXACT same realistic settings as the
+            # proven wttj_firefox_applier.py (do not change - this config works).
+            browser_locale = os.getenv("BROWSER_LOCALE", "en-US")
+            browser_tz = os.getenv("BROWSER_TIMEZONE", "Europe/Paris")
             self.context = await self.browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0",
-                viewport={"width": 1920, "height": 1080},
-                ignore_https_errors=True,
+                viewport={"width": 1366, "height": 768},
+                screen={"width": 1920, "height": 1080},
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) "
+                    "Gecko/20100101 Firefox/121.0"
+                ),
                 locale=browser_locale,
                 timezone_id=browser_tz,
+                permissions=["geolocation"],
+                geolocation={"latitude": 48.8566, "longitude": 2.3522},  # Paris
+                color_scheme="light",
+                has_touch=False,
+                device_scale_factor=1,
+                is_mobile=False,
+                ignore_https_errors=True,
+                extra_http_headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
+                    "Accept-Encoding": "gzip, deflate, br",
+                    "DNT": "1",
+                    "Connection": "keep-alive",
+                    "Upgrade-Insecure-Requests": "1",
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "none",
+                    "Sec-Fetch-User": "?1",
+                    "Cache-Control": "max-age=0",
+                },
             )
+            
+            # Anti-detection init script (identical to proven applier)
+            await self.context.add_init_script("""
+                // Override webdriver property
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                // Override plugins to appear as a real browser
+                Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                // Override languages
+                Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en', 'fr'] });
+                // Override chrome property
+                window.chrome = { runtime: {} };
+                // Override permissions
+                const originalQuery = window.navigator.permissions.query;
+                window.navigator.permissions.query = (parameters) => (
+                    parameters.name === 'notifications' ?
+                        Promise.resolve({ state: Notification.permission }) :
+                        originalQuery(parameters)
+                );
+            """)
+            
+            # Inject a script (runs before page JS) that intercepts
+            # grecaptcha.execute to record the ACTION the site requests.
+            # reCAPTCHA v3 tokens are action-bound; we need the exact action
+            # string to solve correctly via the captcha service.
+            await self.context.add_init_script("""
+                (() => {
+                    window.__captchaActions = [];
+                    window.__grecaptchaSiteKey = null;
+                    const wrapExecute = (obj) => {
+                        if (!obj || obj.__wrapped) return;
+                        const origExecute = obj.execute;
+                        if (typeof origExecute !== 'function') return;
+                        obj.execute = function(siteKey, opts) {
+                            try {
+                                if (typeof siteKey === 'string') window.__grecaptchaSiteKey = siteKey;
+                                if (opts && opts.action) window.__captchaActions.push(opts.action);
+                            } catch (e) {}
+                            return origExecute.apply(this, arguments);
+                        };
+                        obj.__wrapped = true;
+                    };
+                    let _g;
+                    Object.defineProperty(window, 'grecaptcha', {
+                        configurable: true,
+                        get() { return _g; },
+                        set(v) {
+                            _g = v;
+                            try {
+                                wrapExecute(v);
+                                if (v && v.enterprise) wrapExecute(v.enterprise);
+                            } catch (e) {}
+                        }
+                    });
+                })();
+            """)
             
             # Create page first
             self.page = await self.context.new_page()
@@ -111,6 +205,26 @@ class WTTJBotBypass:
             logger.error(f"Failed to launch browser: {e}")
             raise
     
+    async def get_captcha_actions(self) -> list:
+        """Return the reCAPTCHA v3 action names the site has requested so far."""
+        if not self.page:
+            return []
+        try:
+            actions = await self.page.evaluate("() => window.__captchaActions || []")
+            return actions or []
+        except Exception as e:
+            logger.warning(f"Could not read captcha actions: {e}")
+            return []
+
+    async def get_detected_site_key(self) -> Optional[str]:
+        """Return the reCAPTCHA site key captured from grecaptcha.execute calls."""
+        if not self.page:
+            return None
+        try:
+            return await self.page.evaluate("() => window.__grecaptchaSiteKey || null")
+        except Exception:
+            return None
+
     async def accept_cookies(self) -> bool:
         """Accept cookie consent banner (Axeptio-based on WTTJ)"""
         if not self.page:
@@ -764,7 +878,7 @@ class WTTJBotBypass:
 
 
 async def bypass_wttj_signup(
-    signup_url: str = "https://www.welcometothejungle.com/en-GB/authenticate/signup?redirect=%2Fen-GB",
+    signup_url: str = "https://www.welcometothejungle.com/fr/authenticate/signup",
     headless: bool = False,
     proxy: Optional[str] = None
 ) -> bool:

@@ -302,7 +302,7 @@ async def bypass_and_create_account(
     email: str,
     password: str,
     first_name: str,
-    signup_url: str = "https://www.welcometothejungle.com/en-GB/authenticate/signup?redirect=%2Fen-GB",
+    signup_url: str = "https://www.welcometothejungle.com/fr/authenticate/signup",
     headless: bool = True,
     proxy: Optional[str] = None
 ):
@@ -561,7 +561,7 @@ async def bypass_and_create_account(
 
 @router.post("/bypass-bot-challenge")
 async def bypass_bot_challenge(
-    signup_url: str = "https://www.welcometothejungle.com/en-GB/authenticate/signup?redirect=%2Fen-GB",
+    signup_url: str = "https://www.welcometothejungle.com/fr/authenticate/signup",
     headless: bool = True,
     proxy: Optional[str] = None
 ):
