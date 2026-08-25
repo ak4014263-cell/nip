@@ -151,27 +151,57 @@ class WTTJBotBypass:
                 );
             """)
             
-            # Inject a script (runs before page JS) that intercepts
-            # grecaptcha.execute to record the ACTION the site requests.
-            # reCAPTCHA v3 tokens are action-bound; we need the exact action
-            # string to solve correctly via the captcha service.
+            # Inject a script (runs before page JS) that HIJACKS grecaptcha.execute.
+            # reCAPTCHA v3 tokens are single-use and action-bound. When WTTJ's
+            # frontend calls execute() at submit time, we:
+            #   1. record the exact action it requests (window.__captchaActions)
+            #   2. return a PENDING promise instead of a real token
+            #   3. our Python code reads the action, solves it via the captcha
+            #      service, then resolves the promise with the fresh token via
+            #      window.__setSolvedToken(token)
+            # This guarantees the token matches the action, is fresh (single-use),
+            # and is delivered exactly when WTTJ needs it.
             await self.context.add_init_script("""
                 (() => {
                     window.__captchaActions = [];
                     window.__grecaptchaSiteKey = null;
+                    window.__solvedToken = null;
+                    window.__tokenWaiters = [];
+                    window.__executeCalled = false;
+
+                    const provideToken = () => new Promise((resolve) => {
+                        if (window.__solvedToken) {
+                            resolve(window.__solvedToken);
+                        } else {
+                            window.__tokenWaiters.push(resolve);
+                        }
+                    });
+
+                    // Called from Python once we have a solved token
+                    window.__setSolvedToken = (t) => {
+                        window.__solvedToken = t;
+                        const waiters = window.__tokenWaiters.slice();
+                        window.__tokenWaiters = [];
+                        waiters.forEach((r) => { try { r(t); } catch (e) {} });
+                        return true;
+                    };
+
                     const wrapExecute = (obj) => {
                         if (!obj || obj.__wrapped) return;
-                        const origExecute = obj.execute;
-                        if (typeof origExecute !== 'function') return;
+                        obj.__wrapped = true;
                         obj.execute = function(siteKey, opts) {
                             try {
+                                window.__executeCalled = true;
                                 if (typeof siteKey === 'string') window.__grecaptchaSiteKey = siteKey;
                                 if (opts && opts.action) window.__captchaActions.push(opts.action);
                             } catch (e) {}
-                            return origExecute.apply(this, arguments);
+                            return provideToken();
                         };
-                        obj.__wrapped = true;
+                        if (typeof obj.ready === 'function') {
+                            obj.ready = function(cb) { try { cb(); } catch (e) {} };
+                        }
                     };
+
                     let _g;
                     Object.defineProperty(window, 'grecaptcha', {
                         configurable: true,
@@ -224,6 +254,36 @@ class WTTJBotBypass:
             return await self.page.evaluate("() => window.__grecaptchaSiteKey || null")
         except Exception:
             return None
+
+    async def wait_for_captcha_action(self, timeout: float = 15.0) -> Optional[str]:
+        """
+        Wait until WTTJ's frontend calls grecaptcha.execute (which happens at
+        submit time) and return the action it requested. Returns None on timeout.
+        """
+        if not self.page:
+            return None
+        import time as _time
+        deadline = _time.time() + timeout
+        while _time.time() < deadline:
+            try:
+                actions = await self.page.evaluate("() => window.__captchaActions || []")
+                if actions:
+                    return actions[-1]
+            except Exception:
+                pass
+            await asyncio.sleep(0.4)
+        return None
+
+    async def set_solved_token(self, token: str) -> bool:
+        """Deliver the solved reCAPTCHA token to the waiting page (resolves the
+        pending promise returned by our hijacked grecaptcha.execute)."""
+        if not self.page:
+            return False
+        try:
+            return await self.page.evaluate("(t) => window.__setSolvedToken(t)", token)
+        except Exception as e:
+            logger.warning(f"Could not set solved token: {e}")
+            return False
 
     async def accept_cookies(self) -> bool:
         """Accept cookie consent banner (Axeptio-based on WTTJ)"""

@@ -414,67 +414,80 @@ async def bypass_and_create_account(
             bypass.page.on("console", _on_console)
             bypass.page.on("pageerror", lambda e: console_messages.append(f"[pageerror] {str(e)[:200]}"))
             
-            # Step 3.5: Solve reCAPTCHA (the confirmed blocker: server returns
-            # 400 invalid_recaptcha for automated browsers without a valid token)
-            captcha_info = {"attempted": False, "solved": False, "provider": None, "version": None}
-            if CaptchaSolver is not None:
-                solver = CaptchaSolver()
+            captcha_info = {"attempted": False, "solved": False, "provider": None,
+                            "version": None, "action": None}
+            solver = CaptchaSolver() if CaptchaSolver is not None else None
+            if solver:
                 captcha_info["provider"] = solver.provider
-                if solver.enabled:
-                    captcha_info["attempted"] = True
-                    logger.info("🧩 Solving reCAPTCHA via captcha service...")
-                    try:
-                        cfg = await detect_recaptcha_config(bypass.page)
-                        site_key = cfg.get("site_key") or WTTJ_SITE_KEY
-                        version = cfg.get("version") or "v3"
-                        captcha_info["version"] = version
-                        page_url = bypass.page.url
 
-                        token = None
-                        if version == "v3":
-                            token = await solver.solve_recaptcha_v3(
-                                site_key=site_key, page_url=page_url, action="submit"
-                            )
-                            # Fallback to v2-invisible if v3 fails
-                            if not token:
-                                logger.info("v3 solve failed, trying v2-invisible...")
-                                token = await solver.solve_recaptcha_v2(
-                                    site_key=site_key, page_url=page_url, invisible=True
-                                )
-                        else:
-                            token = await solver.solve_recaptcha_v2(
-                                site_key=site_key, page_url=page_url,
-                                invisible=cfg.get("invisible", True)
-                            )
-
-                        if token:
-                            await inject_recaptcha_token(bypass.page, token)
-                            captcha_info["solved"] = True
-                            logger.info("✅ reCAPTCHA token injected")
-                        else:
-                            logger.warning("⚠️ Captcha service did not return a token")
-                    except Exception as cap_ex:
-                        logger.error(f"Captcha solving error: {cap_ex}")
-                else:
-                    logger.warning(
-                        "⚠️ No CAPTCHA_API_KEY configured. Registration will be "
-                        "rejected with invalid_recaptcha. Set CAPTCHA_API_KEY to enable."
-                    )
-            
-            # Step 4: Click Agree button
-            logger.info("Step 3/4: Clicking 'Agree and create profile' button...")
+            # Step 4: Click submit FIRST. Our hijacked grecaptcha.execute captures
+            # the action WTTJ requests and returns a pending promise (the form
+            # waits). We then solve for that exact action and deliver the token.
+            logger.info("Step 3/4: Clicking 'Accepter et créer mon profil' button...")
             agree_clicked = await bypass.click_agree_button()
             if not agree_clicked:
                 return {
                     "status": "failed",
                     "step": "agree_button",
-                    "message": "Could not find or click 'Agree and create profile' button"
+                    "message": "Could not find or click the create-profile button"
                 }
-            logger.info("✅ Agree button clicked")
-            
-            # Step 5: Wait for account creation
+            logger.info("✅ Create-profile button clicked")
+
+            # Step 3.5 (after click): capture action → solve → deliver token
+            if solver and solver.enabled:
+                captcha_info["attempted"] = True
+                logger.info("🧩 Waiting for WTTJ to request a reCAPTCHA token...")
+                try:
+                    action = await bypass.wait_for_captcha_action(timeout=15)
+                    captcha_info["action"] = action
+                    logger.info(f"🧩 WTTJ requested reCAPTCHA action: {action!r}")
+
+                    detected_key = await bypass.get_detected_site_key()
+                    cfg = await detect_recaptcha_config(bypass.page)
+                    site_key = detected_key or cfg.get("site_key") or WTTJ_SITE_KEY
+                    version = cfg.get("version") or "v3"
+                    captcha_info["version"] = version
+                    page_url = bypass.page.url
+
+                    token = None
+                    if version == "v3":
+                        token = await solver.solve_recaptcha_v3(
+                            site_key=site_key, page_url=page_url,
+                            action=action or "submit",
+                        )
+                        if not token:
+                            logger.info("v3 solve failed, trying v2-invisible...")
+                            token = await solver.solve_recaptcha_v2(
+                                site_key=site_key, page_url=page_url, invisible=True
+                            )
+                    else:
+                        token = await solver.solve_recaptcha_v2(
+                            site_key=site_key, page_url=page_url,
+                            invisible=cfg.get("invisible", True)
+                        )
+
+                    if token:
+                        # Deliver the fresh token to the waiting page. This
+                        # resolves grecaptcha.execute's promise, so WTTJ submits
+                        # with a token that matches the requested action.
+                        delivered = await bypass.set_solved_token(token)
+                        # Belt-and-suspenders: also inject into any textarea
+                        await inject_recaptcha_token(bypass.page, token)
+                        captcha_info["solved"] = True
+                        logger.info(f"✅ reCAPTCHA token delivered (waiter resolved={delivered})")
+                    else:
+                        logger.warning("⚠️ Captcha service did not return a token")
+                except Exception as cap_ex:
+                    logger.error(f"Captcha solving error: {cap_ex}", exc_info=True)
+            elif solver:
+                logger.warning(
+                    "⚠️ No CAPTCHA_API_KEY configured. Registration will be "
+                    "rejected with invalid_recaptcha. Set CAPTCHA_API_KEY to enable."
+                )
+
+            # Step 5: Wait for account creation (form submits once token delivered)
             logger.info("Step 4/4: Waiting for account creation...")
-            await asyncio.sleep(5)
+            await asyncio.sleep(8)
             
             final_url = bypass.page.url if bypass.page else "unknown"
             initial_url = signup_url
