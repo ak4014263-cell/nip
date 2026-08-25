@@ -258,6 +258,9 @@ services:
       - swiply-network
     restart: unless-stopped
     shm_size: '2gb'
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   wttj_scraper:
     build:
