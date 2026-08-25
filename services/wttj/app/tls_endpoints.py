@@ -507,7 +507,7 @@ async def bypass_and_create_account(
             onboarding_reached = any(k in final_path for k in ["/onboarding", "complete-profile", "/dashboard", "/home"])
             
             # Check captured API responses for registration result
-            registration_api = [r for r in captured_responses if any(k in r["url"].lower() for k in ["register", "signup", "sign_up", "graphql"])]
+            registration_api = [r for r in captured_responses if any(k in r["url"].lower() for k in ["registration", "register", "signup", "sign_up", "/api/v3/reg"])]
             api_success = any(r.get("status") in (200, 201, 204) for r in registration_api)
             api_rejected = any(r.get("status") in (400, 401, 403, 422, 429) for r in registration_api)
             
