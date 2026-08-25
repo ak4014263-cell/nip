@@ -349,6 +349,33 @@ async def bypass_and_create_account(
             if not form_filled:
                 logger.warning("⚠️ Form filling encountered issues but continuing...")
             
+            # Set up network monitoring to capture the registration API response
+            captured_responses = []
+            
+            async def _on_response(response):
+                try:
+                    url_l = response.url.lower()
+                    if any(k in url_l for k in ["register", "signup", "sign_up", "graphql", "account", "auth", "user"]):
+                        entry = {
+                            "url": response.url,
+                            "status": response.status,
+                            "method": response.request.method,
+                        }
+                        # Try to capture response body for API calls (not documents)
+                        try:
+                            ct = response.headers.get("content-type", "")
+                            if "json" in ct or "text" in ct:
+                                body = await response.text()
+                                entry["body"] = body[:500]
+                        except Exception:
+                            pass
+                        captured_responses.append(entry)
+                        logger.info(f"🌐 API Response: {response.request.method} {response.status} {response.url}")
+                except Exception:
+                    pass
+            
+            bypass.page.on("response", lambda r: asyncio.create_task(_on_response(r)))
+            
             # Step 4: Click Agree button
             logger.info("Step 3/4: Clicking 'Agree and create profile' button...")
             agree_clicked = await bypass.click_agree_button()
@@ -395,17 +422,31 @@ async def bypass_and_create_account(
             
             # Detect actual success: URL should change away from signup page
             url_changed = final_url != initial_url and "signup" not in final_url.lower() and "sign_up" not in final_url.lower()
+            # Onboarding redirect also indicates success
+            onboarding_reached = any(k in final_url.lower() for k in ["onboarding", "complete-profile", "welcome"])
             
-            status = "completed" if url_changed else "form_submitted_but_not_navigated"
+            # Check captured API responses for registration result
+            registration_api = [r for r in captured_responses if any(k in r["url"].lower() for k in ["register", "signup", "sign_up", "graphql"])]
+            api_success = any(r.get("status") in (200, 201, 204) for r in registration_api)
+            api_rejected = any(r.get("status") in (400, 401, 403, 422, 429) for r in registration_api)
             
-            logger.info(f"✅ Signup flow ended. Final URL: {final_url}, Changed: {url_changed}")
+            if url_changed or onboarding_reached:
+                status = "completed"
+            elif api_rejected:
+                status = "rejected_by_server"
+            else:
+                status = "form_submitted_but_not_navigated"
+            
+            logger.info(f"✅ Signup flow ended. Final URL: {final_url}, Changed: {url_changed}, Onboarding: {onboarding_reached}")
+            logger.info(f"🌐 Captured {len(captured_responses)} API responses, registration-related: {len(registration_api)}")
             
             return {
                 "status": status,
                 "email": email,
                 "message": (
-                    "Account creation flow completed successfully" if url_changed
-                    else "Form submitted but page did not navigate away from signup - form may have validation errors"
+                    "Account created successfully - redirected to onboarding" if (url_changed or onboarding_reached)
+                    else "Form submitted but server rejected registration (likely reCAPTCHA/bot detection)" if api_rejected
+                    else "Form submitted but page did not navigate - check reCAPTCHA and API responses"
                 ),
                 "steps_completed": [
                     "Bot challenge bypassed",
@@ -415,8 +456,12 @@ async def bypass_and_create_account(
                 "initial_url": initial_url,
                 "final_url": final_url,
                 "url_changed": url_changed,
+                "onboarding_reached": onboarding_reached,
                 "page_title": page_title,
                 "error_messages_on_page": error_messages,
+                "api_responses": captured_responses[:15],
+                "registration_api_success": api_success,
+                "registration_api_rejected": api_rejected,
             }
         
         finally:
