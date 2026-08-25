@@ -638,7 +638,7 @@ class WTTJBotBypass:
 
 
 async def bypass_wttj_signup(
-    signup_url: str = "https://www.welcometothe.jungle/users/sign_up",
+    signup_url: str = "https://www.welcometothejungle.com/en-GB/authenticate/signup?redirect=%2Fen-GB",
     headless: bool = False,
     proxy: Optional[str] = None
 ) -> bool:

@@ -290,8 +290,8 @@ async def bypass_and_create_account(
     email: str,
     password: str,
     first_name: str,
-    signup_url: str = "https://www.welcometothe.jungle/users/sign_up",
-    headless: bool = False,
+    signup_url: str = "https://www.welcometothejungle.com/en-GB/authenticate/signup?redirect=%2Fen-GB",
+    headless: bool = True,
     proxy: Optional[str] = None
 ):
     """
@@ -306,7 +306,7 @@ async def bypass_and_create_account(
         "email": "newuser@example.com",
         "password": "SecurePass123!@",
         "first_name": "John",
-        "signup_url": "https://www.welcometothe.jungle/users/sign_up",
+        "signup_url": "https://www.welcometothejungle.com/users/sign_up",
         "headless": false,
         "proxy": null
     }
@@ -386,9 +386,12 @@ async def bypass_and_create_account(
     except Exception as e:
         logger.error(f"❌ Signup flow error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Signup flow failed: {str(e)}")
+
+
+@router.post("/bypass-bot-challenge")
 async def bypass_bot_challenge(
-    signup_url: str = "https://www.welcometothe.jungle/users/sign_up",
-    headless: bool = False,
+    signup_url: str = "https://www.welcometothejungle.com/en-GB/authenticate/signup?redirect=%2Fen-GB",
+    headless: bool = True,
     proxy: Optional[str] = None
 ):
     """
@@ -406,7 +409,7 @@ async def bypass_bot_challenge(
     **Example:**
     ```json
     {
-        "signup_url": "https://www.welcometothe.jungle/users/sign_up",
+        "signup_url": "https://www.welcometothejungle.com/users/sign_up",
         "headless": false,
         "proxy": "http://user:pass@proxy:8080"
     }
