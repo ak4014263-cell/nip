@@ -496,7 +496,6 @@ async def bypass_and_create_account(
                 }""")
                 
                 # Save screenshot
-                import os
                 screenshot_dir = "/app/screenshots"
                 os.makedirs(screenshot_dir, exist_ok=True)
                 screenshot_path = f"{screenshot_dir}/signup_result_{email.replace('@','_at_')}.png"
