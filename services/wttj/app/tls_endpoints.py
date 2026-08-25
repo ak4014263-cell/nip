@@ -398,6 +398,15 @@ async def bypass_and_create_account(
                                 entry["body"] = body[:400]
                         except Exception:
                             pass
+                        # For registration calls, capture the REQUEST body so we
+                        # can see the reCAPTCHA token field name/structure.
+                        try:
+                            if "registration" in url_l:
+                                req_body = response.request.post_data
+                                if req_body:
+                                    entry["request_body"] = req_body[:800]
+                        except Exception:
+                            pass
                         captured_responses.append(entry)
                         logger.info(f"🌐 {method} {response.status} {response.url[:120]}")
                 except Exception:
