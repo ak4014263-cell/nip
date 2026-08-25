@@ -5,6 +5,7 @@ Handles Cloudflare, reCAPTCHA, and other bot detection challenges
 Uses Firefox with stealth techniques
 """
 import asyncio
+import os
 import logging
 import time
 from typing import Optional, Dict, Any
@@ -79,13 +80,17 @@ class WTTJBotBypass:
             # Launch Firefox browser
             self.browser = await playwright.firefox.launch(**launch_args)
             
-            # Create context with anti-detection settings
+            # Create context with anti-detection settings.
+            # Locale/timezone default to UK (matches en-GB signup + UK residential
+            # proxy) for reCAPTCHA v3 geo-consistency. Override via env if needed.
+            browser_locale = os.getenv("BROWSER_LOCALE", "en-GB")
+            browser_tz = os.getenv("BROWSER_TIMEZONE", "Europe/London")
             self.context = await self.browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0",
                 viewport={"width": 1920, "height": 1080},
                 ignore_https_errors=True,
-                locale="en-US",
-                timezone_id="America/New_York",
+                locale=browser_locale,
+                timezone_id=browser_tz,
             )
             
             # Create page first
