@@ -90,65 +90,77 @@ class WTTJBotBypass:
             raise
     
     async def accept_cookies(self) -> bool:
-        """Accept cookie consent banner"""
+        """Accept cookie consent banner (Axeptio-based on WTTJ)"""
         if not self.page:
             return False
         
         try:
             logger.info("Looking for cookie consent banner...")
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             
-            # Common cookie button selectors
+            # WTTJ uses Axeptio. The primary accept button says "OK for me".
+            # We MUST NOT click "Agree" as that matches the form submit button.
             cookie_selectors = [
-                'button:has-text("Accept")',
+                # Axeptio-specific selectors (most reliable)
+                'button:has-text("OK for me")',
+                'button:has-text("OK pour moi")',
+                'button.axeptio_btn_acceptAll',
+                '[data-testid="axeptio-accept-all"]',
+                'button[title*="OK for me" i]',
+                # Generic accept
                 'button:has-text("Accept all")',
                 'button:has-text("Accept cookies")',
                 'button:has-text("I accept")',
-                'button:has-text("Agree")',
-                'button:has-text("OK")',
-                'button[id*="accept"]',
-                'button[class*="accept"]',
-                'button[class*="consent"]',
-                'xpath=//button[contains(text(), "Accept")]',
-                'xpath=//button[contains(., "cookie")]',
+                'button[id*="accept" i]:not([id*="terms" i])',
+                # Common consent frameworks
                 '#onetrust-accept-btn-handler',
                 '.cookie-accept',
-                '[aria-label*="Accept"]',
+                # DO NOT include generic "Agree" since it matches "Agree and create profile"
             ]
             
             for selector in cookie_selectors:
                 try:
-                    element = await self.page.wait_for_selector(selector, timeout=3000, state="visible")
+                    element = await self.page.wait_for_selector(selector, timeout=2500, state="visible")
                     if element:
+                        # Extra safety: make sure this isn't the form submit
+                        text = (await element.text_content() or "").strip().lower()
+                        if "create profile" in text or "sign up" in text:
+                            logger.info(f"Skipping form-related button: {text!r}")
+                            continue
                         await element.click()
-                        logger.info(f"✅ Accepted cookies via: {selector}")
-                        await asyncio.sleep(1)
-                        return True
+                        logger.info(f"✅ Accepted cookies via: {selector} (text={text!r})")
+                        await asyncio.sleep(1.5)
+                        # Verify banner disappeared
+                        try:
+                            banner_check = await self.page.locator('text="C is for COOKIE"').count()
+                            if banner_check == 0:
+                                logger.info("✅ Cookie banner confirmed dismissed")
+                                return True
+                            else:
+                                logger.info("Cookie banner still visible, trying next selector")
+                                continue
+                        except:
+                            return True
                 except:
                     continue
             
-            # Try JavaScript approach
+            # JS fallback specifically targeting Axeptio button text
             js_result = await self.page.evaluate("""
                 () => {
-                    const buttons = Array.from(document.querySelectorAll('button, a'));
-                    const cookieBtn = buttons.find(btn => 
-                        btn.textContent.toLowerCase().includes('accept') ||
-                        btn.textContent.toLowerCase().includes('agree') ||
-                        btn.getAttribute('id')?.includes('accept') ||
-                        btn.className?.includes('accept')
-                    );
-                    
-                    if (cookieBtn) {
-                        cookieBtn.click();
-                        return true;
-                    }
-                    return false;
+                    const buttons = Array.from(document.querySelectorAll('button'));
+                    // Prefer "OK for me" / "OK pour moi" exact match
+                    const okBtn = buttons.find(btn => {
+                        const t = (btn.textContent || '').trim().toLowerCase();
+                        return t === 'ok for me' || t === 'ok pour moi' || t === 'accept all';
+                    });
+                    if (okBtn) { okBtn.click(); return {ok: true, text: okBtn.textContent.trim()}; }
+                    return {ok: false};
                 }
             """)
             
-            if js_result:
-                logger.info("✅ Accepted cookies via JavaScript")
-                await asyncio.sleep(1)
+            if js_result.get('ok'):
+                logger.info(f"✅ Accepted cookies via JavaScript: {js_result.get('text')}")
+                await asyncio.sleep(1.5)
                 return True
             
             logger.info("No cookie banner found (may already be accepted)")
@@ -528,18 +540,31 @@ class WTTJBotBypass:
             return False
     
     async def click_agree_button(self) -> bool:
-        """Click 'Agree and create profile' yellow button"""
+        """Click 'Agree and create profile' yellow button with human-like behavior"""
         if not self.page:
             return False
         
         try:
             logger.info("Looking for 'Agree and create profile' button...")
-            await asyncio.sleep(2)
             
-            # Method 1: Try text-based selectors
+            # Human-like pause before finding button (helps reCAPTCHA v3 score)
+            await asyncio.sleep(2.5)
+            
+            # Simulate some mouse movement first (helps with reCAPTCHA v3)
+            try:
+                import random
+                for _ in range(3):
+                    x = random.randint(400, 1400)
+                    y = random.randint(200, 700)
+                    await self.page.mouse.move(x, y, steps=random.randint(5, 15))
+                    await asyncio.sleep(random.uniform(0.15, 0.4))
+            except Exception as mm_ex:
+                logger.debug(f"Mouse movement simulation skipped: {mm_ex}")
+            
+            # Method 1: Try text-based selectors with hover + click (more human-like)
             text_selectors = [
-                'text="Agree and create profile"',
                 'button:has-text("Agree and create profile")',
+                'text="Agree and create profile"',
                 'button >> text="Agree and create profile"',
             ]
             
@@ -548,6 +573,13 @@ class WTTJBotBypass:
                     logger.info(f"Trying text selector: {selector}")
                     element = await self.page.wait_for_selector(selector, timeout=5000, state="visible")
                     if element:
+                        # Scroll into view first
+                        await element.scroll_into_view_if_needed()
+                        await asyncio.sleep(0.5)
+                        # Hover to trigger any human behavior tracking
+                        await element.hover()
+                        await asyncio.sleep(0.4)
+                        # Then click
                         await element.click()
                         logger.info("✅ Clicked via text selector")
                         await asyncio.sleep(3)
